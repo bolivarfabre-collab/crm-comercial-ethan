@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Comercial Ethan</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (Excel Export) CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Estilos base personalizados */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        /* Transición suave para el menú móvil */
+        #sidebar { transition: transform 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex h-screen overflow-hidden">
+
+    <!-- BARRA LATERAL VERTICAL (SIDEBAR) -->
+    <aside id="sidebar" class="bg-gray-900 text-white w-64 flex flex-col h-full shadow-2xl absolute md:relative z-40 transform -translate-x-full md:translate-x-0">
+        <!-- Cabecera del Sidebar -->
+        <div class="p-5 border-b border-gray-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-green-600 text-white p-2 rounded-lg font-bold text-lg flex-shrink-0">
+                    <i class="fa-solid fa-bed"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide leading-tight">Comercial Ethan</h1>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest mt-0.5">CRM & Inventario</p>
+                </div>
+            </div>
+            <!-- Botón cerrar solo visible en móviles -->
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white">
+                <i class="fa-solid fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Botones de Navegación Verticales -->
+        <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-1" id="nav-tabs">
+            <button onclick="switchTab('clientes')" id="tab-btn-clientes" class="nav-btn w-full text-left px-6 py-3 font-medium text-sm flex items-center gap-3 transition-colors border-l-4 bg-gray-800 text-white border-green-500">
+                <i class="fa-solid fa-users w-5 text-center"></i> Histórico
+            </button>
+            <button onclick="switchTab('activos')" id="tab-btn-activos" class="nav-btn w-full text-left px-6 py-3 font-medium text-sm flex items-center gap-3 transition-colors border-l-4 border-transparent text-gray-400 hover:bg-gray-800 hover:text-white">
+                <i class="fa-solid fa-user-check w-5 text-center"></i> Clientes Activos
+            </button>
+            <button onclick="switchTab('cobros')" id="tab-btn-cobros" class="nav-btn w-full text-left px-6 py-3 font-medium text-sm flex items-center gap-3 transition-colors border-l-4 border-transparent text-gray-400 hover:bg-gray-800 hover:text-white">
+                <i class="fa-solid fa-money-bill-wave w-5 text-center"></i> Cobros
+            </button>
+            <button onclick="switchTab('inventario')" id="tab-btn-inventario" class="nav-btn w-full text-left px-6 py-3 font-medium text-sm flex items-center gap-3 transition-colors border-l-4 border-transparent text-gray-400 hover:bg-gray-800 hover:text-white">
+                <i class="fa-solid fa-truck-ramp-box w-5 text-center"></i> Compras / Inv.
+            </button>
+        </nav>
+
+        <!-- SECCIÓN DE RESPALDO / SINCRONIZACIÓN (Añadido exactamente en el espacio solicitado) -->
+        <div class="px-4 py-3 border-t border-gray-800 bg-gray-950/40 flex flex-col gap-2">
+            <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold text-center">Sincronización PC / Tablet</p>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="exportarBaseDeDatos()" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-colors" title="Exportar toda la base de datos">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Exportar
+                </button>
+                <button onclick="document.getElementById('input-importar-db').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-colors" title="Importar base de datos completa">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Importar
+                </button>
+                <input type="file" id="input-importar-db" accept=".json" class="hidden" onchange="importarBaseDeDatos(event)">
+            </div>
+        </div>
+
+        <!-- Footer del Sidebar -->
+        <div class="p-3 border-t border-gray-800 text-center">
+            <span class="inline-flex items-center gap-1.5 bg-green-900/50 text-green-400 px-3 py-1 rounded-full text-xs font-semibold border border-green-800">
+                <i class="fa-solid fa-circle text-[8px]"></i> Sistema En Línea
+            </span>
+        </div>
+    </aside>
+
+    <!-- Fondo oscuro semitransparente para móviles cuando el menú está abierto -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden"></div>
+
+    <!-- CONTENEDOR PRINCIPAL A LA DERECHA -->
+    <div class="flex-1 flex flex-col h-full relative">
+        
+        <!-- Cabecera Móvil -->
+        <header class="md:hidden bg-gray-900 text-white p-4 shadow-md flex items-center justify-between z-20">
+            <div class="flex items-center gap-2">
+                <div class="bg-green-600 p-1.5 rounded font-bold text-sm">
+                    <i class="fa-solid fa-bed"></i>
+                </div>
+                <h1 class="font-bold tracking-wide">Comercial Ethan</h1>
+            </div>
+            <button onclick="toggleSidebar()" class="text-gray-300 hover:text-white focus:outline-none">
+                <i class="fa-solid fa-bars text-2xl"></i>
+            </button>
+        </header>
+
+        <!-- Área de Contenido con Scroll -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50 w-full">
+            <div class="max-w-7xl mx-auto">
+
+                <!-- 1. PESTAÑA CLIENTES HISTÓRICO -->
+                <section id="sec-clientes" class="tab-content space-y-4">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Registro Histórico</h2>
+                        <button onclick="openModalCliente()" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl font-bold shadow-sm flex items-center justify-center gap-2 transition-colors text-sm">
+                            <i class="fa-solid fa-user-plus text-base"></i> Registrar Cliente
+                        </button>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap justify-between items-center gap-4">
+                        <div class="relative flex-1 min-w-[280px]">
+                            <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
+                            <input type="text" id="search-clientes" oninput="renderClientes()" placeholder="Buscar por Nombre, ID Venta o Cédula..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm bg-gray-50">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="exportToExcel('histórico')" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-file-excel"></i> Exportar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs md:text-sm whitespace-nowrap">
+                            <thead>
+                                <tr class="bg-gray-100 border-b text-gray-600 uppercase font-semibold text-[11px] tracking-wider">
+                                    <th onclick="toggleSortOrder()" class="p-3 cursor-pointer hover:bg-gray-200 transition-colors select-none" title="Clic para alternar orden ascendente/descendente">
+                                        ID Venta <i id="sort-icon" class="fa-solid fa-arrow-down-short-wide ml-1 text-green-600"></i>
+                                    </th>
+                                    <th class="p-3">Fecha Venta</th>
+                                    <th class="p-3">Cliente / Cédula</th>
+                                    <th class="p-3">Contacto</th>
+                                    <th class="p-3">Artículo(s)</th>
+                                    <th class="p-3">Valor / Saldo</th>
+                                    <th class="p-3">Último Pago</th>
+                                    <th class="p-3">Estado</th>
+                                    <th class="p-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-clientes" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 2. PESTAÑA CLIENTES ACTIVOS -->
+                <section id="sec-activos" class="tab-content hidden space-y-4">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Clientes Activos (Con Saldo)</h2>
+                        <button onclick="openModalCliente()" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl font-bold shadow-sm flex items-center justify-center gap-2 transition-colors text-sm">
+                            <i class="fa-solid fa-user-plus text-base"></i> Registrar Nuevo Cliente Activo
+                        </button>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap justify-between items-center gap-4">
+                        <div class="relative flex-1 min-w-[280px]">
+                            <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
+                            <input type="text" id="search-activos" oninput="renderClientesActivos()" placeholder="Buscar cliente activo..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm bg-gray-50">
+                        </div>
+                        <button onclick="exportToExcel('activos')" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm">
+                            <i class="fa-solid fa-file-excel"></i> Exportar Activos
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs md:text-sm whitespace-nowrap">
+                            <thead>
+                                <tr class="bg-gray-100 border-b text-gray-600 uppercase font-semibold text-[11px] tracking-wider">
+                                    <th class="p-3">ID Venta</th>
+                                    <th class="p-3">Nombre</th>
+                                    <th class="p-3">Dirección</th>
+                                    <th class="p-3">Teléfono</th>
+                                    <th class="p-3">Fecha de Venta</th>
+                                    <th class="p-3">Saldo</th>
+                                    <th class="p-3">Último Pago</th>
+                                    <th class="p-3 text-center">Tipo Cliente</th>
+                                    <th class="p-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-activos" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 3. PESTAÑA COBROS -->
+                <section id="sec-cobros" class="tab-content hidden space-y-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Gestión de Cobros</h2>
+                        <button onclick="openModalCobro()" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl font-bold shadow-sm flex items-center justify-center gap-2 text-sm">
+                            <i class="fa-solid fa-hand-holding-dollar text-base"></i> Registrar Reporte de Cobro
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-5 rounded-2xl shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs uppercase tracking-wider font-medium opacity-80">Cobrado esta Semana</p>
+                                <h3 class="text-2xl font-black mt-1" id="kpi-semana">$0.00</h3>
+                            </div>
+                            <i class="fa-solid fa-calendar-week text-4xl opacity-20"></i>
+                        </div>
+                        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-5 rounded-2xl shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs uppercase tracking-wider font-medium opacity-80">Cobrado este Mes</p>
+                                <h3 class="text-2xl font-black mt-1" id="kpi-mes">$0.00</h3>
+                            </div>
+                            <i class="fa-solid fa-calendar-days text-4xl opacity-20"></i>
+                        </div>
+                    </div>
+
+                    <div id="secciones-semanales" class="space-y-4"></div>
+                </section>
+
+                <!-- 4. PESTAÑA COMPRAS / INVENTARIO -->
+                <section id="sec-inventario" class="tab-content hidden space-y-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Compras e Inventario</h2>
+                        <button onclick="openModalCompra()" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl font-bold shadow-sm flex items-center justify-center gap-2 text-sm">
+                            <i class="fa-solid fa-cart-plus text-base"></i> Registrar Nueva Compra / Inventario
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Invertido este Mes</p>
+                                <h3 class="text-2xl font-bold text-gray-800 mt-1" id="inv-mes">$0.00</h3>
+                            </div>
+                            <div class="p-3 bg-red-50 text-red-500 rounded-lg"><i class="fa-solid fa-arrow-trend-down text-xl"></i></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Invertido este Año</p>
+                                <h3 class="text-2xl font-bold text-gray-800 mt-1" id="inv-anio">$0.00</h3>
+                            </div>
+                            <div class="p-3 bg-blue-50 text-blue-500 rounded-lg"><i class="fa-solid fa-chart-line text-xl"></i></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs md:text-sm whitespace-nowrap">
+                            <thead>
+                                <tr class="bg-gray-100 border-b text-gray-600 uppercase font-semibold text-[11px] tracking-wider">
+                                    <th class="p-3">Fecha</th>
+                                    <th class="p-3">Nombre del Producto</th>
+                                    <th class="p-3">Cantidad</th>
+                                    <th class="p-3">Valor Compra</th>
+                                    <th class="p-3">Precio Unidad</th>
+                                    <th class="p-3">Utilidad Estimada</th>
+                                    <th class="p-3 text-center">Factura</th>
+                                    <th class="p-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-compras" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALES / VENTANAS FLOTANTES -->
+
+    <!-- Modal Cliente -->
+    <div id="modal-cliente" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+            <button onclick="closeModal('modal-cliente')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl font-bold">&times;</button>
+            <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2" id="title-modal-cliente">Registrar Cliente</h2>
+            <form id="form-cliente" onsubmit="saveCliente(event)" class="space-y-4 text-sm">
+                <input type="hidden" id="cli-index">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-gray-700">ID Venta</label>
+                        <input type="text" id="cli-idventa" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">Fecha de Venta</label>
+                        <input type="date" id="cli-fecha" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">Nombre Completo</label>
+                        <input type="text" id="cli-nombre" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">ID Cédula</label>
+                        <input type="text" id="cli-cedula" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">Teléfono 1</label>
+                        <input type="text" id="cli-tel1" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">Teléfono 2</label>
+                        <input type="text" id="cli-tel2" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block font-semibold text-gray-700">Dirección</label>
+                        <input type="text" id="cli-direccion" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    
+                    <!-- SECCIÓN ARTÍCULOS CON SELECCIÓN MÚLTIPLE (+) -->
+                    <div class="sm:col-span-2 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="block font-semibold text-gray-700">Artículo(s)</label>
+                            <button type="button" onclick="agregarCampoArticulo()" class="bg-green-100 text-green-700 hover:bg-green-200 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors">
+                                <i class="fa-solid fa-plus"></i> Añadir otro artículo
+                            </button>
+                        </div>
+                        <div id="contenedor-articulos" class="space-y-2">
+                            <!-- Los campos de artículos se inyectan aquí dinámicamente -->
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-gray-700">Valor Total Venta ($)</label>
+                        <input type="number" step="0.01" id="cli-valor" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">Saldo Actual ($)</label>
+                        <input type="number" step="0.01" id="cli-saldo" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">Vendedor</label>
+                        <input type="text" id="cli-vendedor" list="lista-vendedores" placeholder="Seleccione o escriba..." class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                        <datalist id="lista-vendedores">
+                            <option value="George">
+                            <option value="Almacén">
+                            <option value="GF">
+                            <option value="BF">
+                        </datalist>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">Estado Inicial</label>
+                        <select id="cli-estado" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                            <option value="Activo">Activo (Aparece en Clientes Activos)</option>
+                            <option value="Inactivo">Inactivo (Solo Histórico)</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block font-semibold text-gray-700">Imagen de Contrato o Cédula</label>
+                        <input type="file" id="cli-foto" accept="image/*" class="w-full border border-gray-300 bg-gray-50 p-2 rounded-lg mt-1 cursor-pointer">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t mt-4">
+                    <button type="button" onclick="closeModal('modal-cliente')" class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-800 font-semibold transition-colors">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold shadow-md transition-colors">Guardar Cliente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Cobro -->
+    <div id="modal-cobro" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="closeModal('modal-cobro')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl font-bold">&times;</button>
+            <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2" id="title-modal-cobro">Registrar Cobro</h2>
+            <form id="form-cobro" onsubmit="saveCobro(event)" class="space-y-4 text-sm">
+                <input type="hidden" id="cob-index">
+                <div>
+                    <label class="block font-semibold text-gray-700">Fecha del Cobro</label>
+                    <input type="date" id="cob-fecha" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700">Seleccionar Cliente</label>
+                    <select id="cob-cliente" onchange="onCobroClientChange()" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-gray-700">Monto Pago ($)</label>
+                        <input type="number" step="0.01" id="cob-pago" oninput="calcNuevoSaldoCobro()" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">Nuevo Saldo ($)</label>
+                        <input type="number" step="0.01" id="cob-saldo" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 font-bold text-red-600 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700">No. Recibo</label>
+                    <input type="text" id="cob-recibo" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t mt-4">
+                    <button type="button" onclick="closeModal('modal-cobro')" class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-800 font-semibold transition-colors">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold shadow-md transition-colors">Guardar Pago</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Compra Proveedor (Inventario) -->
+    <div id="modal-compra" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal('modal-compra')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl font-bold">&times;</button>
+            <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2" id="title-modal-compra">Registrar Compra</h2>
+            <form id="form-compra" onsubmit="saveCompra(event)" class="space-y-4 text-sm">
+                <input type="hidden" id="cmp-index">
+                <div>
+                    <label class="block font-semibold text-gray-700">Fecha de Compra</label>
+                    <input type="date" id="cmp-fecha" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700">Nombre del Producto</label>
+                    <input type="text" id="cmp-nombre" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none" placeholder="Ej. Colchón Paraíso Sensaciones 2 Plazas">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-gray-700">Cantidad</label>
+                        <input type="number" id="cmp-cantidad" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none" min="1" value="1">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">Costo Ref. ($)</label>
+                        <input type="number" step="0.01" id="cmp-precio" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-gray-700">Valor Total ($)</label>
+                        <input type="number" step="0.01" id="cmp-valor" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">Utilidad Est. ($)</label>
+                        <input type="number" step="0.01" id="cmp-utilidad" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700">Imagen de Factura</label>
+                    <input type="file" id="cmp-foto" accept="image/*" class="w-full border border-gray-300 bg-gray-50 p-2 rounded-lg mt-1 cursor-pointer">
+                    <p class="text-[11px] text-gray-500 mt-1" id="cmp-foto-hint">Sube la foto para verla o descargarla después.</p>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t mt-4">
+                    <button type="button" onclick="closeModal('modal-compra')" class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-800 font-semibold transition-colors">Cancelar</button>
+                    <button type="submit" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold shadow-md transition-colors">Guardar Inventario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Ver Detalle / Imagen del Cliente -->
+    <div id="modal-ver-cliente" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl relative text-sm space-y-4">
+            <button onclick="closeModal('modal-ver-cliente')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl font-bold">&times;</button>
+            <h3 class="text-lg font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><i class="fa-solid fa-address-card text-blue-600"></i> <span id="vcli-nombre"></span></h3>
+            <div id="vcli-info" class="grid grid-cols-2 gap-y-3 gap-x-4 text-gray-700"></div>
+            <div class="mt-4 pt-4 border-t">
+                <h4 class="font-bold text-gray-800 mb-2">Documento / Cédula / Contrato:</h4>
+                <div id="vcli-imagen-container" class="bg-gray-50 rounded-xl p-2 text-center min-h-[150px] border border-dashed border-gray-300 flex items-center justify-center">
+                    <span class="text-gray-400">Sin documento adjunto</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Visor de Factura (Inventario) -->
+    <div id="modal-ver-factura" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col items-center justify-center p-4">
+        <button onclick="closeModal('modal-ver-factura')" class="absolute top-4 right-4 text-gray-400 hover:text-white text-4xl font-bold">&times;</button>
+        <h3 class="text-xl font-bold text-white mb-4">Visor de Factura</h3>
+        <img id="visor-factura-img" src="" class="max-w-full max-h-[75vh] object-contain bg-white p-2 rounded-lg shadow-2xl">
+        <a id="visor-factura-descargar" href="" download="Factura_Comercial_Ethan.jpg" class="mt-6 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-transform hover:scale-105">
+            <i class="fa-solid fa-download"></i> Descargar Factura
+        </a>
+    </div>
+
+    <!-- JAVASCRIPT LÓGICA CRM -->
+    <script>
+        // === MENÚ MÓVIL (SIDEBAR TOGGLE) ===
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            
+            sidebar.classList.toggle('-translate-x-full');
+            
+            if(sidebar.classList.contains('-translate-x-full')) {
+                overlay.classList.add('hidden');
+            } else {
+                overlay.classList.remove('hidden');
+            }
+        }
+
+        // === ALMACENAMIENTO DE DATOS ===
+        let appData = {
+            clientes: JSON.parse(localStorage.getItem('ethan_clientes')) || [],
+            cobros: JSON.parse(localStorage.getItem('ethan_cobros')) || [],
+            compras: JSON.parse(localStorage.getItem('ethan_compras')) || []
+        };
+
+        let sortDirection = 'asc';
+
+        function saveData() {
+            localStorage.setItem('ethan_clientes', JSON.stringify(appData.clientes));
+            localStorage.setItem('ethan_cobros', JSON.stringify(appData.cobros));
+            localStorage.setItem('ethan_compras', JSON.stringify(appData.compras));
+        }
+
+        // === FUNCIONES DE EXPORTAR E IMPORTAR BASE DE DATOS TOTAL ===
+        function exportarBaseDeDatos() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            
+            const fechaHoy = new Date().toISOString().split('T')[0];
+            downloadAnchor.setAttribute("download", `comercial_ethan_backup_${fechaHoy}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importarBaseDeDatos(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    if (importedData.clientes && importedData.cobros && importedData.compras) {
+                        if (confirm('¿Estás seguro de importar esta base de datos? Se sobrescribirá toda la información actual en este dispositivo.')) {
+                            appData.clientes = importedData.clientes;
+                            appData.cobros = importedData.cobros;
+                            appData.compras = importedData.compras;
+                            
+                            saveData();
+                            
+                            // Refrescar todas las vistas en pantalla
+                            renderClientes();
+                            renderClientesActivos();
+                            renderCobros();
+                            renderCompras();
+                            
+                            alert('¡Base de datos importada y sincronizada exitosamente!');
+                        }
+                    } else {
+                        alert('El archivo seleccionado no tiene el formato correcto de respaldo de Comercial Ethan.');
+                    }
+                } catch (error) {
+                    alert('Hubo un error al leer el archivo JSON.');
+                    console.error(error);
+                }
+                // Limpiar input file para permitir re-importar el mismo archivo si es necesario
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if(appData.clientes.length === 0) {
+                appData.clientes = [
+                    {"idVenta": "981", "fecha": "2026-08-14", "nombre": "Cinthia Moran", "cedula": "-", "tel1": "0959262964", "tel2": "0963752158", "direccion": "Av del Ejercito y Bolivia", "articulo": "Colchón 3 plz", "valor": 520, "saldo": 262, "ultimoPago": "", "vendedor": "George", "estado": "Activo", "semaforo": "Verde", "foto": null},
+                    {"idVenta": "987", "fecha": "2026-08-14", "nombre": "Alexandra Avila", "cedula": "-", "tel1": "0955857796", "tel2": "", "direccion": "21 y la I", "articulo": "Cama capitoneada", "valor": 340, "saldo": 110, "ultimoPago": "", "vendedor": "Almacén", "estado": "Activo", "semaforo": "Verde", "foto": null}
+                ];
+                saveData();
+            }
+            renderClientes();
+            renderClientesActivos();
+            renderCobros();
+            renderCompras();
+        });
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('bg-gray-800', 'text-white', 'border-green-500');
+                el.classList.add('text-gray-400', 'border-transparent');
+            });
+            
+            const target = document.getElementById(`sec-${tabId}`);
+            if(target) target.classList.remove('hidden');
+
+            const btn = document.getElementById(`tab-btn-${tabId}`);
+            if(btn) {
+                btn.classList.remove('text-gray-400', 'border-transparent');
+                btn.classList.add('bg-gray-800', 'text-white', 'border-green-500');
+            }
+
+            if(window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebar');
+                if(!sidebar.classList.contains('-translate-x-full')) {
+                    toggleSidebar();
+                }
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                if(!file) resolve(null);
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ==========================================
+        // 1. CLIENTES HISTÓRICOS Y ACTIVOS
+        // ==========================================
+        function toggleSortOrder() {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            const icon = document.getElementById('sort-icon');
+            if (sortDirection === 'asc') {
+                icon.className = "fa-solid fa-arrow-down-short-wide ml-1 text-green-600";
+            } else {
+                icon.className = "fa-solid fa-arrow-up-wide-short ml-1 text-green-600";
+            }
+            renderClientes();
+        }
+
+        // Funciones para manejo dinámico de selección múltiple de artículos
+        function agregarCampoArticulo(valorInicial = '') {
+            const container = document.getElementById('contenedor-articulos');
+            const divItem = document.createElement('div');
+            divItem.className = 'flex items-center gap-2 article-row';
+            divItem.innerHTML = `
+                <select class="flex-1 border border-gray-300 bg-gray-50 p-2.5 rounded-lg focus:ring-2 focus:ring-green-500 outline-none articulo-select" onchange="verificarSelectManual(this)">
+                    <option value="Colchón 2 plz">Colchón 2 plz</option>
+                    <option value="Colchón 1 1/2 plz">Colchón 1 1/2 plz</option>
+                    <option value="Colchón 3 plz">Colchón 3 plz</option>
+                    <option value="Cama base">Cama base</option>
+                    <option value="Cama capitoneada">Cama capitoneada</option>
+                    <option value="Añadir manualmente">Añadir manualmente...</option>
+                </select>
+                <input type="text" placeholder="Escribe el artículo..." class="flex-1 border border-gray-300 bg-gray-50 p-2.5 rounded-lg focus:ring-2 focus:ring-green-500 outline-none articulo-manual hidden" value="${valorInicial}">
+                <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 p-2" title="Eliminar artículo"><i class="fa-solid fa-trash"></i></button>
+            `;
+            container.appendChild(divItem);
+
+            const select = divItem.querySelector('.articulo-select');
+            const manualInput = divItem.querySelector('.articulo-manual');
+
+            if (valorInicial) {
+                let existe = false;
+                for(let opt of select.options) {
+                    if(opt.value === valorInicial) {
+                        existe = true;
+                        break;
+                    }
+                }
+                if(existe) {
+                    select.value = valorInicial;
+                } else {
+                    select.value = 'Añadir manualmente';
+                    manualInput.classList.remove('hidden');
+                    manualInput.value = valorInicial;
+                }
+            }
+        }
+
+        function verificarSelectManual(selectElem) {
+            const parent = selectElem.parentElement;
+            const manualInput = parent.querySelector('.articulo-manual');
+            if(selectElem.value === 'Añadir manualmente') {
+                manualInput.classList.remove('hidden');
+                manualInput.focus();
+            } else {
+                manualInput.classList.add('hidden');
+                manualInput.value = '';
+            }
+        }
+
+        function openModalCliente(index = null) {
+            document.getElementById('form-cliente').reset();
+            document.getElementById('cli-index').value = index !== null ? index : '';
+            document.getElementById('title-modal-cliente').innerText = index !== null ? 'Editar Cliente' : 'Registrar Cliente';
+            document.getElementById('contenedor-articulos').innerHTML = '';
+
+            if (index !== null) {
+                const c = appData.clientes[index];
+                document.getElementById('cli-idventa').value = c.idVenta || '';
+                document.getElementById('cli-fecha').value = c.fecha || '';
+                document.getElementById('cli-nombre').value = c.nombre || '';
+                document.getElementById('cli-cedula').value = c.cedula || '';
+                document.getElementById('cli-tel1').value = c.tel1 || '';
+                document.getElementById('cli-tel2').value = c.tel2 || '';
+                document.getElementById('cli-direccion').value = c.direccion || '';
+                document.getElementById('cli-valor').value = c.valor !== undefined ? c.valor : '';
+                document.getElementById('cli-saldo').value = c.saldo !== undefined ? c.saldo : '';
+                document.getElementById('cli-vendedor').value = c.vendedor || '';
+                document.getElementById('cli-estado').value = c.estado || 'Activo';
+
+                if (c.articulo) {
+                    const arts = c.articulo.split(', ');
+                    arts.forEach(art => agregarCampoArticulo(art.trim()));
+                } else {
+                    agregarCampoArticulo('Colchón 2 plz');
+                }
+            } else {
+                document.getElementById('cli-fecha').value = new Date().toISOString().split('T')[0];
+                agregarCampoArticulo('Colchón 2 plz');
+            }
+
+            document.getElementById('modal-cliente').classList.remove('hidden');
+        }
+
+        async function saveCliente(e) {
+            e.preventDefault();
+            const idx = document.getElementById('cli-index').value;
+            const fileInput = document.getElementById('cli-foto');
+            let fotoBase64 = idx !== '' ? appData.clientes[idx].foto : null;
+
+            if (fileInput.files.length > 0) {
+                fotoBase64 = await fileToBase64(fileInput.files[0]);
+            }
+
+            const articleRows = document.querySelectorAll('.article-row');
+            let listaArticulos = [];
+            articleRows.forEach(row => {
+                const sel = row.querySelector('.articulo-select').value;
+                const man = row.querySelector('.articulo-manual').value;
+                if(sel === 'Añadir manualmente') {
+                    if(man.trim() !== '') listaArticulos.push(man.trim());
+                } else {
+                    listaArticulos.push(sel);
+                }
+            });
+            const articuloFinal = listaArticulos.length > 0 ? listaArticulos.join(', ') : 'Sin especificar';
+
+            const clienteData = {
+                idVenta: document.getElementById('cli-idventa').value,
+                fecha: document.getElementById('cli-fecha').value,
+                nombre: document.getElementById('cli-nombre').value,
+                cedula: document.getElementById('cli-cedula').value,
+                tel1: document.getElementById('cli-tel1').value,
+                tel2: document.getElementById('cli-tel2').value,
+                direccion: document.getElementById('cli-direccion').value,
+                articulo: articuloFinal,
+                valor: parseFloat(document.getElementById('cli-valor').value || 0),
+                saldo: parseFloat(document.getElementById('cli-saldo').value || 0),
+                ultimoPago: idx !== '' ? (appData.clientes[idx].ultimoPago || '') : '',
+                vendedor: document.getElementById('cli-vendedor').value,
+                estado: document.getElementById('cli-estado').value,
+                semaforo: idx !== '' ? (appData.clientes[idx].semaforo || 'Verde') : 'Verde',
+                foto: fotoBase64
+            };
+
+            if (idx === '') {
+                appData.clientes.push(clienteData);
+            } else {
+                appData.clientes[idx] = clienteData;
+            }
+
+            saveData();
+            closeModal('modal-cliente');
+            renderClientes();
+            renderClientesActivos();
+            renderCobros(); 
+        }
+
+        function renderClientes() {
+            const search = document.getElementById('search-clientes').value.toLowerCase();
+            const tbody = document.getElementById('tbody-clientes');
+            tbody.innerHTML = '';
+
+            const sorted = [...appData.clientes].map((c, i) => ({...c, originalIndex: i}))
+                .sort((a, b) => {
+                    const idA = isNaN(a.idVenta) ? (a.idVenta || '') : Number(a.idVenta);
+                    const idB = isNaN(b.idVenta) ? (b.idVenta || '') : Number(b.idVenta);
+
+                    if (idA < idB) return sortDirection === 'asc' ? -1 : 1;
+                    if (idA > idB) return sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+
+            sorted.forEach((c) => {
+                const nombreVal = c.nombre || '';
+                const idVentaVal = c.idVenta || '';
+                const cedulaVal = c.cedula || '';
+                if (nombreVal.toLowerCase().includes(search) || idVentaVal.toLowerCase().includes(search) || cedulaVal.toLowerCase().includes(search)) {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-blue-50 border-b transition-colors';
+
+                    const estadoColor = c.estado === 'Activo' ? 'text-green-600 font-bold bg-green-50' : 'text-gray-500 font-bold bg-gray-50';
+
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold">${c.idVenta || '-'}</td>
+                        <td class="p-3">${c.fecha || '-'}</td>
+                        <td class="p-3">
+                            <button onclick="verClienteDetail(${c.originalIndex})" class="text-blue-600 font-bold hover:underline text-left">
+                                ${c.nombre || 'Sin nombre'}
+                            </button>
+                            <div class="text-xs text-gray-500">CI: ${c.cedula || '-'}</div>
+                        </td>
+                        <td class="p-3">${c.tel1 || '-'} ${c.tel2 ? '/ ' + c.tel2 : ''}</td>
+                        <td class="p-3 max-w-[150px] truncate" title="${c.articulo || ''}">${c.articulo || '-'}</td>
+                        <td class="p-3">
+                            <div class="text-gray-600 text-[11px] uppercase">Total: $${(c.valor || 0).toFixed(2)}</div>
+                            <div class="font-bold text-red-600">Sal: $${(c.saldo || 0).toFixed(2)}</div>
+                        </td>
+                        <td class="p-3 text-gray-600 font-medium">${c.ultimoPago || 'Sin abonos'}</td>
+                        <td class="p-3">
+                            <button onclick="toggleEstado(${c.originalIndex})" class="${estadoColor} border px-2 py-1 rounded-md text-xs shadow-sm hover:opacity-80">
+                                ${c.estado || 'Activo'}
+                            </button>
+                        </td>
+                        <td class="p-3 text-center space-x-3">
+                            <button onclick="openModalCliente(${c.originalIndex})" class="text-blue-500 hover:text-blue-800" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteCliente(${c.originalIndex})" class="text-red-500 hover:text-red-800" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+        }
+
+        function renderClientesActivos() {
+            const search = document.getElementById('search-activos').value.toLowerCase();
+            const tbody = document.getElementById('tbody-activos');
+            tbody.innerHTML = '';
+
+            const activos = appData.clientes
+                .map((c, i) => ({...c, originalIndex: i}))
+                .filter(c => c.estado === 'Activo');
+
+            activos.forEach(c => {
+                const nombreVal = c.nombre || '';
+                const cedulaVal = c.cedula || '';
+                if (nombreVal.toLowerCase().includes(search) || cedulaVal.toLowerCase().includes(search)) {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-blue-50 border-b transition-colors';
+                    
+                    const semaforoBg = c.semaforo === 'Rojo' ? 'bg-red-500' : c.semaforo === 'Amarillo' ? 'bg-yellow-400' : 'bg-green-500';
+                    const semaforoText = c.semaforo === 'Rojo' ? 'Moroso' : c.semaforo === 'Amarillo' ? 'Regular' : 'Excelente';
+
+                    tr.innerHTML = `
+                        <td class="p-3 font-bold text-gray-600">${c.idVenta || '-'}</td>
+                        <td class="p-3 font-bold text-gray-900">${c.nombre || '-'}</td>
+                        <td class="p-3 truncate max-w-[150px] text-gray-600" title="${c.direccion || ''}">${c.direccion || '-'}</td>
+                        <td class="p-3 text-gray-600">${c.tel1 || '-'} ${c.tel2 ? '/ ' + c.tel2 : ''}</td>
+                        <td class="p-3 text-gray-500">${c.fecha || '-'}</td>
+                        <td class="p-3 font-bold text-red-600 text-lg">$${(c.saldo || 0).toFixed(2)}</td>
+                        <td class="p-3 font-semibold text-blue-700">${c.ultimoPago || 'Sin abonos'}</td>
+                        <td class="p-3 text-center cursor-pointer hover:bg-gray-100 rounded-lg transition-colors" onclick="cycleSemaforo(${c.originalIndex})" title="Clic para cambiar Tipo Cliente">
+                            <div class="flex flex-col items-center justify-center gap-1">
+                                <div class="w-4 h-4 rounded-full ${semaforoBg} shadow-inner border border-black/10"></div>
+                                <span class="text-[10px] font-bold text-gray-500 uppercase">${semaforoText}</span>
+                            </div>
+                        </td>
+                        <td class="p-3 text-center space-x-3">
+                            <button onclick="openModalCliente(${c.originalIndex})" class="text-blue-500 hover:text-blue-800 bg-blue-50 p-1.5 rounded" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteCliente(${c.originalIndex})" class="text-red-500 hover:text-red-800 bg-red-50 p-1.5 rounded" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+        }
+
+        function toggleEstado(index) {
+            appData.clientes[index].estado = appData.clientes[index].estado === 'Activo' ? 'Inactivo' : 'Activo';
+            saveData();
+            renderClientes();
+            renderClientesActivos();
+        }
+
+        function cycleSemaforo(index) {
+            const current = appData.clientes[index].semaforo || 'Verde';
+            const next = current === 'Verde' ? 'Amarillo' : current === 'Amarillo' ? 'Rojo' : 'Verde';
+            appData.clientes[index].semaforo = next;
+            saveData();
+            renderClientes();
+            renderClientesActivos();
+        }
+
+        function deleteCliente(index) {
+            if (confirm('¿Deseas eliminar permanentemente este cliente del historial?')) {
+                appData.clientes.splice(index, 1);
+                saveData();
+                renderClientes();
+                renderClientesActivos();
+            }
+        }
+
+        function verClienteDetail(index) {
+            const c = appData.clientes[index];
+            document.getElementById('vcli-nombre').innerText = c.nombre || 'Detalle';
+            document.getElementById('vcli-info').innerHTML = `
+                <div><span class="text-xs text-gray-500 block uppercase font-bold">ID Venta:</span> <span class="font-semibold text-gray-900">${c.idVenta || '-'}</span></div>
+                <div><span class="text-xs text-gray-500 block uppercase font-bold">Cédula:</span> <span class="font-semibold text-gray-900">${c.cedula || '-'}</span></div>
+                <div><span class="text-xs text-gray-500 block uppercase font-bold">Fecha:</span> <span class="font-semibold text-gray-900">${c.fecha || '-'}</span></div>
+                <div><span class="text-xs text-gray-500 block uppercase font-bold">Teléfono:</span> <span class="font-semibold text-gray-900">${c.tel1 || '-'}</span></div>
+                <div class="col-span-2"><span class="text-xs text-gray-500 block uppercase font-bold">Dirección:</span> <span class="font-semibold text-gray-900">${c.direccion || '-'}</span></div>
+                <div class="col-span-2 bg-red-50 p-2 rounded border border-red-100"><span class="text-xs text-red-500 block uppercase font-bold">Saldo Actual:</span> <span class="text-red-600 font-bold text-xl">$${(c.saldo || 0).toFixed(2)}</span></div>
+            `;
+            const imgCont = document.getElementById('vcli-imagen-container');
+            if (c.foto) {
+                imgCont.innerHTML = `<img src="${c.foto}" class="max-h-64 mx-auto rounded shadow-md border border-gray-200">`;
+            } else {
+                imgCont.innerHTML = `<span class="text-gray-400"><i class="fa-solid fa-image-slash text-2xl block mb-2"></i> Sin documento adjunto</span>`;
+            }
+            document.getElementById('modal-ver-cliente').classList.remove('hidden');
+        }
+
+        function exportToExcel(tipo) {
+            const data = tipo === 'histórico' ? appData.clientes : appData.clientes.filter(c => c.estado === 'Activo');
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "CRM");
+            XLSX.writeFile(wb, `CRM Comercial Ethan.xlsx`);
+        }
+
+        // ==========================================
+        // 2. COBROS
+        // ==========================================
+        function openModalCobro(index = null) {
+            document.getElementById('form-cobro').reset();
+            document.getElementById('cob-index').value = index !== null ? index : '';
+            document.getElementById('title-modal-cobro').innerText = index !== null ? 'Editar Cobro' : 'Registrar Cobro';
+
+            const select = document.getElementById('cob-cliente');
+            select.innerHTML = '<option value="">-- Seleccionar Cliente --</option>';
+            appData.clientes.forEach((c) => {
+                const opt = document.createElement('option');
+                opt.value = c.nombre;
+                opt.dataset.index = appData.clientes.indexOf(c);
+                opt.textContent = `${c.nombre || 'Sin nombre'} (Saldo: $${(c.saldo || 0).toFixed(2)})`;
+                select.appendChild(opt);
+            });
+
+            if (index !== null) {
+                const cobro = appData.cobros[index];
+                document.getElementById('cob-fecha').value = cobro.fecha || '';
+                select.value = cobro.cliente || '';
+                document.getElementById('cob-pago').value = cobro.pago !== undefined ? cobro.pago : '';
+                document.getElementById('cob-recibo').value = cobro.recibo || '';
+                onCobroClientChange();
+            } else {
+                document.getElementById('cob-fecha').value = new Date().toISOString().split('T')[0];
+            }
+
+            document.getElementById('modal-cobro').classList.remove('hidden');
+        }
+
+        function onCobroClientChange() {
+            const select = document.getElementById('cob-cliente');
+            const selectedOpt = select.options[select.selectedIndex];
+            const isEdit = document.getElementById('cob-index').value !== '';
+            
+            if (selectedOpt && selectedOpt.dataset.index) {
+                const cli = appData.clientes[selectedOpt.dataset.index];
+                let saldoReferencia = cli.saldo || 0;
+
+                if(isEdit) {
+                    const cobroViejo = appData.cobros[document.getElementById('cob-index').value];
+                    if(cobroViejo.cliente === cli.nombre) {
+                        saldoReferencia += parseFloat(cobroViejo.pago || 0);
+                    }
+                }
+                document.getElementById('cob-saldo').value = saldoReferencia.toFixed(2);
+                calcNuevoSaldoCobro(saldoReferencia);
+            }
+        }
+
+        function calcNuevoSaldoCobro(saldoReferencia = null) {
+            const select = document.getElementById('cob-cliente');
+            const selectedOpt = select.options[select.selectedIndex];
+            if (selectedOpt && selectedOpt.dataset.index) {
+                if(saldoReferencia === null || typeof saldoReferencia !== 'number'){
+                    const cli = appData.clientes[selectedOpt.dataset.index];
+                    saldoReferencia = cli.saldo || 0;
+                    const isEdit = document.getElementById('cob-index').value !== '';
+                    if(isEdit) {
+                        const cobroViejo = appData.cobros[document.getElementById('cob-index').value];
+                        if(cobroViejo.cliente === cli.nombre) saldoReferencia += parseFloat(cobroViejo.pago || 0);
+                    }
+                }
+                
+                const pago = parseFloat(document.getElementById('cob-pago').value || 0);
+                const nuevo = saldoReferencia - pago;
+                document.getElementById('cob-saldo').value = (nuevo >= 0 ? nuevo : 0).toFixed(2);
+            }
+        }
+
+        function actualizarUltimoPagoCliente(clienteNombre) {
+            const cobrosCliente = appData.cobros.filter(c => c.cliente === clienteNombre);
+            const indexCli = appData.clientes.findIndex(c => c.nombre === clienteNombre);
+            
+            if (indexCli !== -1) {
+                if (cobrosCliente.length > 0) {
+                    cobrosCliente.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+                    appData.clientes[indexCli].ultimoPago = cobrosCliente[0].fecha;
+                } else {
+                    appData.clientes[indexCli].ultimoPago = '';
+                }
+            }
+        }
+
+        function saveCobro(e) {
+            e.preventDefault();
+            const idx = document.getElementById('cob-index').value;
+            const select = document.getElementById('cob-cliente');
+            const cliIndex = select.options[select.selectedIndex].dataset.index;
+            const nuevoPago = parseFloat(document.getElementById('cob-pago').value || 0);
+            const fechaCobro = document.getElementById('cob-fecha').value;
+            const nombreCliente = select.value;
+            
+            let saldoFinal = 0;
+
+            if (idx !== '') {
+                const oldCobro = appData.cobros[idx];
+                const oldCliIndex = appData.clientes.findIndex(c => c.nombre === oldCobro.cliente);
+                if (oldCliIndex !== -1) {
+                    appData.clientes[oldCliIndex].saldo = (appData.clientes[oldCliIndex].saldo || 0) + parseFloat(oldCobro.pago || 0);
+                }
+                
+                if (cliIndex !== undefined) {
+                    appData.clientes[cliIndex].saldo = (appData.clientes[cliIndex].saldo || 0) - nuevoPago;
+                    if(appData.clientes[cliIndex].saldo < 0) appData.clientes[cliIndex].saldo = 0;
+                    if(appData.clientes[cliIndex].saldo === 0) appData.clientes[cliIndex].estado = 'Inactivo';
+                    saldoFinal = appData.clientes[cliIndex].saldo;
+                }
+
+                appData.cobros[idx] = {
+                    fecha: fechaCobro,
+                    cliente: nombreCliente,
+                    pago: nuevoPago,
+                    saldo: saldoFinal,
+                    recibo: document.getElementById('cob-recibo').value
+                };
+
+                actualizarUltimoPagoCliente(oldCobro.cliente);
+                if(oldCobro.cliente !== nombreCliente) actualizarUltimoPagoCliente(nombreCliente);
+
+            } else {
+                if (cliIndex !== undefined) {
+                    appData.clientes[cliIndex].saldo = (appData.clientes[cliIndex].saldo || 0) - nuevoPago;
+                    if(appData.clientes[cliIndex].saldo < 0) appData.clientes[cliIndex].saldo = 0;
+                    if(appData.clientes[cliIndex].saldo === 0) appData.clientes[cliIndex].estado = 'Inactivo';
+                    saldoFinal = appData.clientes[cliIndex].saldo;
+                }
+
+                appData.cobros.push({
+                    fecha: fechaCobro,
+                    cliente: nombreCliente,
+                    pago: nuevoPago,
+                    saldo: saldoFinal,
+                    recibo: document.getElementById('cob-recibo').value
+                });
+                
+                actualizarUltimoPagoCliente(nombreCliente);
+            }
+
+            saveData();
+            closeModal('modal-cobro');
+            renderCobros();
+            renderClientes();
+            renderClientesActivos();
+        }
+
+        function getWeekKey(dateStr) {
+            const d = new Date(dateStr);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            const monday = new Date(d.setDate(diff));
+            return `Semana del Lunes ${monday.toISOString().split('T')[0]}`;
+        }
+
+        function renderCobros() {
+            const container = document.getElementById('secciones-semanales');
+            container.innerHTML = '';
+
+            let totalSemanaActual = 0;
+            let totalMesActual = 0;
+
+            const now = new Date();
+            const currentMonthStr = now.toISOString().slice(0, 7);
+
+            const semanas = {};
+            appData.cobros.map((cob, i) => ({...cob, originalIndex: i}))
+                .sort((a,b) => new Date(b.fecha) - new Date(a.fecha))
+                .forEach(cob => {
+                    const wKey = getWeekKey(cob.fecha || new Date().toISOString().split('T')[0]);
+                    if(!semanas[wKey]) semanas[wKey] = [];
+                    semanas[wKey].push(cob);
+
+                    if((cob.fecha || '').startsWith(currentMonthStr)) {
+                        totalMesActual += (cob.pago || 0);
+                    }
+                });
+
+            document.getElementById('kpi-mes').innerText = `$${totalMesActual.toFixed(2)}`;
+
+            let firstWeek = true;
+            for (const [semanaTitle, lista] of Object.entries(semanas)) {
+                const totalSemana = lista.reduce((acc, curr) => acc + (curr.pago || 0), 0);
+                if(firstWeek) {
+                    totalSemanaActual = totalSemana;
+                    firstWeek = false;
+                }
+
+                const details = document.createElement('details');
+                details.open = true;
+                details.className = 'bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-4';
+
+                details.innerHTML = `
+                    <summary class="p-4 bg-gray-50 hover:bg-gray-100 font-bold flex justify-between items-center cursor-pointer border-b transition-colors outline-none">
+                        <span class="text-gray-800"><i class="fa-solid fa-calendar-day mr-2 text-blue-600"></i>${semanaTitle}</span>
+                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-md text-xs border border-green-200">Total: $${totalSemana.toFixed(2)}</span>
+                    </summary>
+                    <div class="p-0 overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs md:text-sm whitespace-nowrap">
+                            <thead>
+                                <tr class="text-gray-500 border-b uppercase font-semibold bg-gray-50/50 text-[11px] tracking-wider">
+                                    <th class="p-3">Fecha</th>
+                                    <th class="p-3">Cliente</th>
+                                    <th class="p-3">Pago</th>
+                                    <th class="p-3">Saldo Restante</th>
+                                    <th class="p-3">No. Recibo</th>
+                                    <th class="p-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                ${lista.map(c => `
+                                    <tr class="hover:bg-green-50/50 transition-colors">
+                                        <td class="p-3 text-gray-600">${c.fecha || '-'}</td>
+                                        <td class="p-3 font-bold text-gray-900">${c.cliente || '-'}</td>
+                                        <td class="p-3 text-green-600 font-black text-base">$${(c.pago || 0).toFixed(2)}</td>
+                                        <td class="p-3 font-bold text-red-500">$${(c.saldo || 0).toFixed(2)}</td>
+                                        <td class="p-3 font-mono text-gray-500 bg-gray-50 rounded px-2 m-2 inline-block border">${c.recibo || '-'}</td>
+                                        <td class="p-3 text-center space-x-3">
+                                            <button onclick="openModalCobro(${c.originalIndex})" class="text-blue-500 hover:text-blue-800" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                            <button onclick="deleteCobro(${c.originalIndex})" class="text-red-500 hover:text-red-800" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                container.appendChild(details);
+            }
+
+            document.getElementById('kpi-semana').innerText = `$${totalSemanaActual.toFixed(2)}`;
+        }
+
+        function deleteCobro(index) {
+            if (confirm('¿Eliminar este reporte de cobro? El monto se volverá a sumar a la deuda del cliente.')) {
+                const cobro = appData.cobros[index];
+                const cliIndex = appData.clientes.findIndex(c => c.nombre === cobro.cliente);
+                if(cliIndex !== -1) {
+                    appData.clientes[cliIndex].saldo = (appData.clientes[cliIndex].saldo || 0) + parseFloat(cobro.pago || 0);
+                    appData.clientes[cliIndex].estado = 'Activo';
+                }
+                
+                appData.cobros.splice(index, 1);
+                
+                if(cliIndex !== -1) {
+                    actualizarUltimoPagoCliente(cobro.cliente);
+                }
+
+                saveData();
+                renderCobros();
+                renderClientes();
+                renderClientesActivos();
+            }
+        }
+
+        // ==========================================
+        // 3. COMPRAS E INVENTARIO
+        // ==========================================
+        function openModalCompra(index = null) {
+            document.getElementById('form-compra').reset();
+            document.getElementById('cmp-index').value = index !== null ? index : '';
+            document.getElementById('title-modal-compra').innerText = index !== null ? 'Editar Compra' : 'Registrar Compra / Inventario';
+            document.getElementById('cmp-foto-hint').innerText = index !== null ? 'Sube una imagen solo si deseas reemplazar la factura actual.' : 'Sube la foto para verla o descargarla después.';
+
+            if (index !== null) {
+                const c = appData.compras[index];
+                document.getElementById('cmp-fecha').value = c.fecha || '';
+                document.getElementById('cmp-nombre').value = c.nombre || '';
+                document.getElementById('cmp-cantidad').value = c.cantidad || 1;
+                document.getElementById('cmp-valor').value = c.valor !== undefined ? c.valor : '';
+                document.getElementById('cmp-precio').value = c.precio !== undefined ? c.precio : '';
+                document.getElementById('cmp-utilidad').value = c.utilidad !== undefined ? c.utilidad : '';
+            } else {
+                document.getElementById('cmp-fecha').value = new Date().toISOString().split('T')[0];
+            }
+
+            document.getElementById('modal-compra').classList.remove('hidden');
+        }
+
+        async function saveCompra(e) {
+            e.preventDefault();
+            const idx = document.getElementById('cmp-index').value;
+            const fileInput = document.getElementById('cmp-foto');
+            let fotoBase64 = idx !== '' ? appData.compras[idx].factura : null;
+
+            if (fileInput.files.length > 0) {
+                fotoBase64 = await fileToBase64(fileInput.files[0]);
+            }
+
+            const compraData = {
+                fecha: document.getElementById('cmp-fecha').value,
+                nombre: document.getElementById('cmp-nombre').value,
+                cantidad: parseInt(document.getElementById('cmp-cantidad').value || 1),
+                valor: parseFloat(document.getElementById('cmp-valor').value || 0),
+                precio: parseFloat(document.getElementById('cmp-precio').value || 0),
+                utilidad: parseFloat(document.getElementById('cmp-utilidad').value || 0),
+                factura: fotoBase64
+            };
+
+            if (idx === '') {
+                appData.compras.push(compraData);
+            } else {
+                appData.compras[idx] = compraData;
+            }
+
+            saveData();
+            closeModal('modal-compra');
+            renderCompras();
+        }
+
+        function renderCompras() {
+            const tbody = document.getElementById('tbody-compras');
+            tbody.innerHTML = '';
+
+            let invMes = 0;
+            let invAnio = 0;
+            const now = new Date();
+            const currM = now.toISOString().slice(0, 7);
+            const currY = now.getFullYear().toString();
+
+            appData.compras.forEach((c, i) => {
+                const fechaVal = c.fecha || '';
+                if (fechaVal.startsWith(currM)) invMes += (c.valor || 0);
+                if (fechaVal.startsWith(currY)) invAnio += (c.valor || 0);
+
+                const tr = document.createElement('tr');
+                tr.className = 'border-b hover:bg-gray-50 transition-colors';
+                tr.innerHTML = `
+                    <td class="p-3 text-gray-500">${c.fecha || '-'}</td>
+                    <td class="p-3 font-bold text-gray-800">${c.nombre || '-'}</td>
+                    <td class="p-3 text-center"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded font-bold border">${c.cantidad || 1}</span></td>
+                    <td class="p-3 font-bold text-red-600">$${(c.valor || 0).toFixed(2)}</td>
+                    <td class="p-3 text-gray-600">$${(c.precio || 0).toFixed(2)}</td>
+                    <td class="p-3 text-green-700 font-bold">$${(c.utilidad || 0).toFixed(2)}</td>
+                    <td class="p-3 text-center">
+                        ${c.factura ? `<button onclick="verFactura(${i})" class="text-blue-600 font-semibold hover:underline bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 transition-colors"><i class="fa-solid fa-file-invoice"></i> Ver Doc</button>` : '<span class="text-gray-400 text-[10px] uppercase font-bold bg-gray-100 px-2 py-1 rounded">Sin Doc</span>'}
+                    </td>
+                    <td class="p-3 text-center space-x-3">
+                        <button onclick="openModalCompra(${i})" class="text-blue-500 hover:text-blue-800" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteCompra(${i})" class="text-red-500 hover:text-red-800" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('inv-mes').innerText = `$${invMes.toFixed(2)}`;
+            document.getElementById('inv-anio').innerText = `$${invAnio.toFixed(2)}`;
+        }
+
+        function deleteCompra(i) {
+            if (confirm('¿Eliminar compra de inventario?')) {
+                appData.compras.splice(i, 1);
+                saveData();
+                renderCompras();
+            }
+        }
+
+        function verFactura(index) {
+            const compra = appData.compras[index];
+            if (compra && compra.factura) {
+                document.getElementById('visor-factura-img').src = compra.factura;
+                document.getElementById('visor-factura-descargar').href = compra.factura;
+                document.getElementById('modal-ver-factura').classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
