@@ -49,12 +49,15 @@
             <button onclick="switchTab('cobros')" id="tab-btn-cobros" class="nav-btn w-full text-left px-6 py-3 font-medium text-sm flex items-center gap-3 transition-colors border-l-4 border-transparent text-gray-400 hover:bg-gray-800 hover:text-white">
                 <i class="fa-solid fa-money-bill-wave w-5 text-center"></i> Cobros
             </button>
+            <button onclick="switchTab('calendario')" id="tab-btn-calendario" class="nav-btn w-full text-left px-6 py-3 font-medium text-sm flex items-center gap-3 transition-colors border-l-4 border-transparent text-gray-400 hover:bg-gray-800 hover:text-white">
+                <i class="fa-solid fa-calendar-days w-5 text-center"></i> Calendario de Cobros
+            </button>
             <button onclick="switchTab('inventario')" id="tab-btn-inventario" class="nav-btn w-full text-left px-6 py-3 font-medium text-sm flex items-center gap-3 transition-colors border-l-4 border-transparent text-gray-400 hover:bg-gray-800 hover:text-white">
                 <i class="fa-solid fa-truck-ramp-box w-5 text-center"></i> Compras / Inv.
             </button>
         </nav>
 
-        <!-- SECCIÓN DE RESPALDO / SINCRONIZACIÓN (Añadido exactamente en el espacio solicitado) -->
+        <!-- SECCIÓN DE RESPALDO / SINCRONIZACIÓN -->
         <div class="px-4 py-3 border-t border-gray-800 bg-gray-950/40 flex flex-col gap-2">
             <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold text-center">Sincronización PC / Tablet</p>
             <div class="grid grid-cols-2 gap-2">
@@ -211,6 +214,47 @@
                     <div id="secciones-semanales" class="space-y-4"></div>
                 </section>
 
+                <!-- 5. PESTAÑA CALENDARIO DE COBROS -->
+                <section id="sec-calendario" class="tab-content hidden space-y-4">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Calendario y Recordatorios de Cobros</h2>
+                    </div>
+
+                    <!-- Filtros / Estados rápidos -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap items-center gap-3">
+                        <span class="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-full text-xs font-bold">
+                            <i class="fa-solid fa-circle-check"></i> Al día
+                        </span>
+                        <span class="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full text-xs font-bold">
+                            <i class="fa-solid fa-clock"></i> Pendiente esta semana
+                        </span>
+                        <span class="inline-flex items-center gap-1.5 bg-red-100 text-red-800 px-3 py-1.5 rounded-full text-xs font-bold">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Atrasado
+                        </span>
+                        <span class="inline-flex items-center gap-1.5 bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full text-xs font-bold">
+                            <i class="fa-solid fa-calendar"></i> Programado después
+                        </span>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs md:text-sm whitespace-nowrap">
+                            <thead>
+                                <tr class="bg-gray-900 text-white border-b uppercase font-semibold text-[11px] tracking-wider">
+                                    <th class="p-3">Próximo Pago</th>
+                                    <th class="p-3">Estado</th>
+                                    <th class="p-3">Cliente</th>
+                                    <th class="p-3">Teléfono</th>
+                                    <th class="p-3">Valor Cuota</th>
+                                    <th class="p-3">Saldo Deuda</th>
+                                    <th class="p-3">Observación</th>
+                                    <th class="p-3">Programar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-calendario" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </section>
+
                 <!-- 4. PESTAÑA COMPRAS / INVENTARIO -->
                 <section id="sec-inventario" class="tab-content hidden space-y-6">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
@@ -299,7 +343,7 @@
                         <input type="text" id="cli-direccion" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
                     </div>
                     
-                    <!-- SECCIÓN ARTÍCULOS CON SELECCIÓN MÚLTIPLE (+) -->
+                    <!-- SECCIÓN ARTÍCULOS -->
                     <div class="sm:col-span-2 space-y-2">
                         <div class="flex justify-between items-center">
                             <label class="block font-semibold text-gray-700">Artículo(s)</label>
@@ -307,9 +351,7 @@
                                 <i class="fa-solid fa-plus"></i> Añadir otro artículo
                             </button>
                         </div>
-                        <div id="contenedor-articulos" class="space-y-2">
-                            <!-- Los campos de artículos se inyectan aquí dinámicamente -->
-                        </div>
+                        <div id="contenedor-articulos" class="space-y-2"></div>
                     </div>
 
                     <div>
@@ -435,7 +477,7 @@
         </div>
     </div>
 
-    <!-- Modal Ver Detalle / Imagen del Cliente -->
+    <!-- Modal Ver Detalle / Imagen del Cliente (Imagen 3) -->
     <div id="modal-ver-cliente" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl relative text-sm space-y-4">
             <button onclick="closeModal('modal-ver-cliente')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl font-bold">&times;</button>
@@ -480,7 +522,8 @@
         let appData = {
             clientes: JSON.parse(localStorage.getItem('ethan_clientes')) || [],
             cobros: JSON.parse(localStorage.getItem('ethan_cobros')) || [],
-            compras: JSON.parse(localStorage.getItem('ethan_compras')) || []
+            compras: JSON.parse(localStorage.getItem('ethan_compras')) || [],
+            calendario: JSON.parse(localStorage.getItem('ethan_calendario')) || {}
         };
 
         let sortDirection = 'asc';
@@ -489,6 +532,7 @@
             localStorage.setItem('ethan_clientes', JSON.stringify(appData.clientes));
             localStorage.setItem('ethan_cobros', JSON.stringify(appData.cobros));
             localStorage.setItem('ethan_compras', JSON.stringify(appData.compras));
+            localStorage.setItem('ethan_calendario', JSON.stringify(appData.calendario));
         }
 
         // === FUNCIONES DE EXPORTAR E IMPORTAR BASE DE DATOS TOTAL ===
@@ -518,13 +562,14 @@
                             appData.clientes = importedData.clientes;
                             appData.cobros = importedData.cobros;
                             appData.compras = importedData.compras;
+                            appData.calendario = importedData.calendario || {};
                             
                             saveData();
                             
-                            // Refrescar todas las vistas en pantalla
                             renderClientes();
                             renderClientesActivos();
                             renderCobros();
+                            renderCalendario();
                             renderCompras();
                             
                             alert('¡Base de datos importada y sincronizada exitosamente!');
@@ -536,7 +581,6 @@
                     alert('Hubo un error al leer el archivo JSON.');
                     console.error(error);
                 }
-                // Limpiar input file para permitir re-importar el mismo archivo si es necesario
                 event.target.value = '';
             };
             reader.readAsText(file);
@@ -553,6 +597,7 @@
             renderClientes();
             renderClientesActivos();
             renderCobros();
+            renderCalendario();
             renderCompras();
         });
 
@@ -608,7 +653,6 @@
             renderClientes();
         }
 
-        // Funciones para manejo dinámico de selección múltiple de artículos
         function agregarCampoArticulo(valorInicial = '') {
             const container = document.getElementById('contenedor-articulos');
             const divItem = document.createElement('div');
@@ -746,6 +790,7 @@
             renderClientes();
             renderClientesActivos();
             renderCobros(); 
+            renderCalendario();
         }
 
         function renderClientes() {
@@ -860,6 +905,7 @@
             saveData();
             renderClientes();
             renderClientesActivos();
+            renderCalendario();
         }
 
         function cycleSemaforo(index) {
@@ -877,6 +923,7 @@
                 saveData();
                 renderClientes();
                 renderClientesActivos();
+                renderCalendario();
             }
         }
 
@@ -909,7 +956,91 @@
         }
 
         // ==========================================
-        // 2. COBROS
+        // 4. CALENDARIO DE COBROS (NUEVA FUNCIONALIDAD)
+        // ==========================================
+        function renderCalendario() {
+            const tbody = document.getElementById('tbody-calendario');
+            tbody.innerHTML = '';
+
+            const hoyStr = new Date().toISOString().split('T')[0];
+
+            appData.clientes.forEach((c, index) => {
+                if (c.estado !== 'Activo') return;
+
+                if (!appData.calendario[index]) {
+                    appData.calendario[index] = {
+                        fechaProgramada: c.fecha || hoyStr,
+                        estado: 'Al día',
+                        observacion: ''
+                    };
+                }
+
+                const itemCal = appData.calendario[index];
+                let estadoBadge = '';
+                if (itemCal.estado === 'Al día') {
+                    estadoBadge = `<span onclick="ciclarEstadoCalendario(${index})" class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"><i class="fa-solid fa-circle-check"></i> Al día</span>`;
+                } else if (itemCal.estado === 'Pendiente') {
+                    estadoBadge = `<span onclick="ciclarEstadoCalendario(${index})" class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"><i class="fa-solid fa-clock"></i> Pendiente</span>`;
+                } else if (itemCal.estado === 'Atrasado') {
+                    estadoBadge = `<span onclick="ciclarEstadoCalendario(${index})" class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"><i class="fa-solid fa-triangle-exclamation"></i> Atrasado</span>`;
+                } else {
+                    estadoBadge = `<span onclick="ciclarEstadoCalendario(${index})" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"><i class="fa-solid fa-calendar"></i> Programado después</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-blue-50 border-b transition-colors';
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-gray-700">${itemCal.fechaProgramada}</td>
+                    <td class="p-3">${estadoBadge}</td>
+                    <td class="p-3">
+                        <button onclick="verClienteDetail(${index})" class="text-blue-600 font-bold hover:underline text-left">
+                            ${c.nombre || 'Sin nombre'}
+                        </button>
+                    </td>
+                    <td class="p-3 text-gray-600">${c.tel1 || '-'}</td>
+                    <td class="p-3 text-gray-700 font-semibold">$20.00</td>
+                    <td class="p-3 font-bold text-red-600">$${(c.saldo || 0).toFixed(2)}</td>
+                    <td class="p-3">
+                        <input type="text" value="${itemCal.observacion || ''}" onchange="actualizarObservacionCalendario(${index}, this.value)" placeholder="Añadir observación..." class="border border-gray-300 rounded px-2 py-1 text-xs w-48 bg-gray-50 focus:ring-1 focus:ring-green-500 outline-none">
+                    </td>
+                    <td class="p-3 flex items-center gap-2">
+                        <input type="date" value="${itemCal.fechaProgramada}" onchange="actualizarFechaCalendario(${index}, this.value)" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50 focus:ring-1 focus:ring-green-500 outline-none">
+                        <button onclick="guardarFilaCalendario(${index})" class="bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 rounded text-xs shadow" title="Guardar fecha"><i class="fa-solid fa-floppy-disk"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function ciclarEstadoCalendario(index) {
+            if(!appData.calendario[index]) return;
+            const estados = ['Al día', 'Pendiente', 'Atrasado', 'Programado después'];
+            let actual = appData.calendario[index].estado;
+            let nextIdx = (estados.indexOf(actual) + 1) % estados.length;
+            appData.calendario[index].estado = estados[nextIdx];
+            saveData();
+            renderCalendario();
+        }
+
+        function actualizarObservacionCalendario(index, val) {
+            if(!appData.calendario[index]) return;
+            appData.calendario[index].observacion = val;
+            saveData();
+        }
+
+        function actualizarFechaCalendario(index, val) {
+            if(!appData.calendario[index]) return;
+            appData.calendario[index].fechaProgramada = val;
+        }
+
+        function guardarFilaCalendario(index) {
+            saveData();
+            alert('¡Fecha de cobro actualizada y programada con éxito!');
+            renderCalendario();
+        }
+
+        // ==========================================
+        // 5. COBROS
         // ==========================================
         function openModalCobro(index = null) {
             document.getElementById('form-cobro').reset();
@@ -1054,6 +1185,7 @@
             renderCobros();
             renderClientes();
             renderClientesActivos();
+            renderCalendario();
         }
 
         function getWeekKey(dateStr) {
@@ -1161,11 +1293,12 @@
                 renderCobros();
                 renderClientes();
                 renderClientesActivos();
+                renderCalendario();
             }
         }
 
         // ==========================================
-        // 3. COMPRAS E INVENTARIO
+        // 6. COMPRAS E INVENTARIO
         // ==========================================
         function openModalCompra(index = null) {
             document.getElementById('form-compra').reset();
@@ -1274,32 +1407,6 @@
                 document.getElementById('modal-ver-factura').classList.remove('hidden');
             }
         }
-function verFactura(index) {
-            const compra = appData.compras[index];
-            if (compra && compra.factura) {
-                document.getElementById('visor-factura-img').src = compra.factura;
-                document.getElementById('visor-factura-descargar').href = compra.factura;
-                document.getElementById('modal-ver-factura').classList.remove('hidden');
-            }
-        }
-
-        // --- PEGA LAS FUNCIONES AQUÍ ---
-        window.editarItemCaja = (id) => {
-            const item = listaCaja.find(x => x.id === id);
-            if(!item) return;
-            document.getElementById('caja-id').value = item.id;
-            document.getElementById('caja-descripcion').value = item.descripcion || '';
-            document.getElementById('caja-monto').value = item.monto || 0;
-            document.getElementById('caja-titulo-form').innerText = "Editar Registro de Caja";
-            document.getElementById('modal-caja').classList.remove('hidden');
-        };
-
-        window.eliminarItemCaja = async (id) => {
-            if(confirm("¿Estás seguro de eliminar este registro de caja?")) {
-                await deleteDoc(doc(db, "caja_ethan", id));
-                sincronizarDatos();
-            }
-        };
     </script>
 </body>
 </html>
