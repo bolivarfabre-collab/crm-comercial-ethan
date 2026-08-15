@@ -226,13 +226,13 @@
                             <i class="fa-solid fa-circle-check"></i> Al día
                         </span>
                         <span class="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full text-xs font-bold">
-                            <i class="fa-solid fa-clock"></i> Pendiente esta semana
+                            <i class="fa-solid fa-clock"></i> Pendiente
                         </span>
                         <span class="inline-flex items-center gap-1.5 bg-red-100 text-red-800 px-3 py-1.5 rounded-full text-xs font-bold">
                             <i class="fa-solid fa-triangle-exclamation"></i> Atrasado
                         </span>
                         <span class="inline-flex items-center gap-1.5 bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full text-xs font-bold">
-                            <i class="fa-solid fa-calendar"></i> Programado después
+                            <i class="fa-solid fa-calendar"></i> Programado
                         </span>
                     </div>
 
@@ -955,36 +955,74 @@
             XLSX.writeFile(wb, `CRM Comercial Ethan.xlsx`);
         }
 
+        // Helper para obtener el rango exacto de semana (Lunes a Domingo)
+        function getStartAndEndOfWeek(dateObj = new Date()) {
+            const d = new Date(dateObj);
+            d.setHours(0, 0, 0, 0);
+            const day = d.getDay();
+            const diffToMonday = (day === 0 ? -6 : 1) - day;
+            
+            const monday = new Date(d);
+            monday.setDate(d.getDate() + diffToMonday);
+            
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            sunday.setHours(23, 59, 59, 999);
+            
+            return { monday, sunday };
+        }
+
         // ==========================================
-        // 4. CALENDARIO DE COBROS (NUEVA FUNCIONALIDAD)
+        // 4. CALENDARIO DE COBROS
         // ==========================================
         function renderCalendario() {
             const tbody = document.getElementById('tbody-calendario');
             tbody.innerHTML = '';
 
-            const hoyStr = new Date().toISOString().split('T')[0];
+            const hoy = new Date();
+            hoy.setHours(0,0,0,0);
+            const { monday: inicioSemana, sunday: finSemana } = getStartAndEndOfWeek(hoy);
 
             appData.clientes.forEach((c, index) => {
                 if (c.estado !== 'Activo') return;
 
                 if (!appData.calendario[index]) {
                     appData.calendario[index] = {
-                        fechaProgramada: c.fecha || hoyStr,
-                        estado: 'Al día',
+                        fechaProgramada: c.fecha || hoy.toISOString().split('T')[0],
                         observacion: ''
                     };
                 }
 
                 const itemCal = appData.calendario[index];
+                const fechaProg = itemCal.fechaProgramada ? new Date(itemCal.fechaProgramada + 'T00:00:00') : hoy;
+
+                let estadoCalculado = 'Pendiente';
+
+                // Si ya existe un pago registrado que cubre o iguala la fecha programada -> Al día
+                if (c.ultimoPago && new Date(c.ultimoPago + 'T00:00:00') >= fechaProg) {
+                    estadoCalculado = 'Al día';
+                } else if (fechaProg > finSemana) {
+                    // Programado para semanas posteriores
+                    estadoCalculado = 'Programado';
+                } else if (fechaProg < hoy) {
+                    // Días anteriores al actual en adelante sin pago
+                    estadoCalculado = 'Atrasado';
+                } else if (fechaProg >= hoy && fechaProg <= finSemana) {
+                    // Del día actual hasta el último día de la semana actual
+                    estadoCalculado = 'Pendiente';
+                }
+
+                itemCal.estado = estadoCalculado;
+
                 let estadoBadge = '';
-                if (itemCal.estado === 'Al día') {
-                    estadoBadge = `<span onclick="ciclarEstadoCalendario(${index})" class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"><i class="fa-solid fa-circle-check"></i> Al día</span>`;
-                } else if (itemCal.estado === 'Pendiente') {
-                    estadoBadge = `<span onclick="ciclarEstadoCalendario(${index})" class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"><i class="fa-solid fa-clock"></i> Pendiente</span>`;
-                } else if (itemCal.estado === 'Atrasado') {
-                    estadoBadge = `<span onclick="ciclarEstadoCalendario(${index})" class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"><i class="fa-solid fa-triangle-exclamation"></i> Atrasado</span>`;
+                if (estadoCalculado === 'Al día') {
+                    estadoBadge = `<span class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-circle-check"></i> Al día</span>`;
+                } else if (estadoCalculado === 'Pendiente') {
+                    estadoBadge = `<span class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-clock"></i> Pendiente</span>`;
+                } else if (estadoCalculado === 'Atrasado') {
+                    estadoBadge = `<span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-triangle-exclamation"></i> Atrasado</span>`;
                 } else {
-                    estadoBadge = `<span onclick="ciclarEstadoCalendario(${index})" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"><i class="fa-solid fa-calendar"></i> Programado después</span>`;
+                    estadoBadge = `<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-calendar"></i> Programado</span>`;
                 }
 
                 const tr = document.createElement('tr');
@@ -1010,16 +1048,6 @@
                 `;
                 tbody.appendChild(tr);
             });
-        }
-
-        function ciclarEstadoCalendario(index) {
-            if(!appData.calendario[index]) return;
-            const estados = ['Al día', 'Pendiente', 'Atrasado', 'Programado después'];
-            let actual = appData.calendario[index].estado;
-            let nextIdx = (estados.indexOf(actual) + 1) % estados.length;
-            appData.calendario[index].estado = estados[nextIdx];
-            saveData();
-            renderCalendario();
         }
 
         function actualizarObservacionCalendario(index, val) {
@@ -1189,10 +1217,8 @@
         }
 
         function getWeekKey(dateStr) {
-            const d = new Date(dateStr);
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-            const monday = new Date(d.setDate(diff));
+            const dateObj = new Date(dateStr + 'T00:00:00');
+            const { monday } = getStartAndEndOfWeek(dateObj);
             return `Semana del Lunes ${monday.toISOString().split('T')[0]}`;
         }
 
