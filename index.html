@@ -1274,6 +1274,32 @@
                 document.getElementById('modal-ver-factura').classList.remove('hidden');
             }
         }
+function verFactura(index) {
+            const compra = appData.compras[index];
+            if (compra && compra.factura) {
+                document.getElementById('visor-factura-img').src = compra.factura;
+                document.getElementById('visor-factura-descargar').href = compra.factura;
+                document.getElementById('modal-ver-factura').classList.remove('hidden');
+            }
+        }
+
+        // --- PEGA LAS FUNCIONES AQUÍ ---
+        window.editarItemCaja = (id) => {
+            const item = listaCaja.find(x => x.id === id);
+            if(!item) return;
+            document.getElementById('caja-id').value = item.id;
+            document.getElementById('caja-descripcion').value = item.descripcion || '';
+            document.getElementById('caja-monto').value = item.monto || 0;
+            document.getElementById('caja-titulo-form').innerText = "Editar Registro de Caja";
+            document.getElementById('modal-caja').classList.remove('hidden');
+        };
+
+        window.eliminarItemCaja = async (id) => {
+            if(confirm("¿Estás seguro de eliminar este registro de caja?")) {
+                await deleteDoc(doc(db, "caja_ethan", id));
+                sincronizarDatos();
+            }
+        };
     </script>
 </body>
 </html>
