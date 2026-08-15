@@ -11,9 +11,7 @@
     <!-- SheetJS (Excel Export) CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* Estilos base personalizados */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        /* Transición suave para el menú móvil */
         #sidebar { transition: transform 0.3s ease-in-out; }
     </style>
 </head>
@@ -21,7 +19,6 @@
 
     <!-- BARRA LATERAL VERTICAL (SIDEBAR) -->
     <aside id="sidebar" class="bg-gray-900 text-white w-64 flex flex-col h-full shadow-2xl absolute md:relative z-40 transform -translate-x-full md:translate-x-0">
-        <!-- Cabecera del Sidebar -->
         <div class="p-5 border-b border-gray-800 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="bg-green-600 text-white p-2 rounded-lg font-bold text-lg flex-shrink-0">
@@ -32,13 +29,11 @@
                     <p class="text-[10px] text-gray-400 uppercase tracking-widest mt-0.5">CRM & Inventario</p>
                 </div>
             </div>
-            <!-- Botón cerrar solo visible en móviles -->
             <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white">
                 <i class="fa-solid fa-times text-xl"></i>
             </button>
         </div>
 
-        <!-- Botones de Navegación Verticales -->
         <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-1" id="nav-tabs">
             <button onclick="switchTab('clientes')" id="tab-btn-clientes" class="nav-btn w-full text-left px-6 py-3 font-medium text-sm flex items-center gap-3 transition-colors border-l-4 bg-gray-800 text-white border-green-500">
                 <i class="fa-solid fa-users w-5 text-center"></i> Histórico
@@ -57,7 +52,6 @@
             </button>
         </nav>
 
-        <!-- SECCIÓN DE RESPALDO / SINCRONIZACIÓN -->
         <div class="px-4 py-3 border-t border-gray-800 bg-gray-950/40 flex flex-col gap-2">
             <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold text-center">Sincronización PC / Tablet</p>
             <div class="grid grid-cols-2 gap-2">
@@ -71,7 +65,6 @@
             </div>
         </div>
 
-        <!-- Footer del Sidebar -->
         <div class="p-3 border-t border-gray-800 text-center">
             <span class="inline-flex items-center gap-1.5 bg-green-900/50 text-green-400 px-3 py-1 rounded-full text-xs font-semibold border border-green-800">
                 <i class="fa-solid fa-circle text-[8px]"></i> Sistema En Línea
@@ -79,13 +72,10 @@
         </div>
     </aside>
 
-    <!-- Fondo oscuro semitransparente para móviles cuando el menú está abierto -->
     <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden"></div>
 
     <!-- CONTENEDOR PRINCIPAL A LA DERECHA -->
     <div class="flex-1 flex flex-col h-full relative">
-        
-        <!-- Cabecera Móvil -->
         <header class="md:hidden bg-gray-900 text-white p-4 shadow-md flex items-center justify-between z-20">
             <div class="flex items-center gap-2">
                 <div class="bg-green-600 p-1.5 rounded font-bold text-sm">
@@ -98,7 +88,6 @@
             </button>
         </header>
 
-        <!-- Área de Contenido con Scroll -->
         <main class="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50 w-full">
             <div class="max-w-7xl mx-auto">
 
@@ -220,7 +209,6 @@
                         <h2 class="text-2xl font-bold text-gray-800">Calendario y Recordatorios de Cobros</h2>
                     </div>
 
-                    <!-- Filtros / Estados rápidos -->
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap items-center gap-3">
                         <span class="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-full text-xs font-bold">
                             <i class="fa-solid fa-circle-check"></i> Al día
@@ -345,7 +333,6 @@
                         <input type="text" id="cli-direccion" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
                     </div>
                     
-                    <!-- SECCIÓN ARTÍCULOS -->
                     <div class="sm:col-span-2 space-y-2">
                         <div class="flex justify-between items-center">
                             <label class="block font-semibold text-gray-700">Artículo(s)</label>
@@ -363,6 +350,10 @@
                     <div>
                         <label class="block font-semibold text-gray-700">Saldo Actual ($)</label>
                         <input type="number" step="0.01" id="cli-saldo" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-gray-700">Cuota Personalizada ($)</label>
+                        <input type="number" step="0.01" id="cli-cuota" placeholder="Ej: 20.00" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
                     </div>
                     <div>
                         <label class="block font-semibold text-gray-700">Vendedor</label>
@@ -506,7 +497,6 @@
 
     <!-- JAVASCRIPT LÓGICA CRM -->
     <script>
-        // === MENÚ MÓVIL (SIDEBAR TOGGLE) ===
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
@@ -520,7 +510,6 @@
             }
         }
 
-        // === ALMACENAMIENTO DE DATOS ===
         let appData = {
             clientes: JSON.parse(localStorage.getItem('ethan_clientes')) || [],
             cobros: JSON.parse(localStorage.getItem('ethan_cobros')) || [],
@@ -538,7 +527,6 @@
             localStorage.setItem('ethan_calendario', JSON.stringify(appData.calendario));
         }
 
-        // === FUNCIONES DE EXPORTAR E IMPORTAR BASE DE DATOS TOTAL ===
         function exportarBaseDeDatos() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
             const downloadAnchor = document.createElement('a');
@@ -592,8 +580,8 @@
         window.addEventListener('DOMContentLoaded', () => {
             if(appData.clientes.length === 0) {
                 appData.clientes = [
-                    {"idVenta": "981", "fecha": "2026-08-14", "nombre": "Cinthia Moran", "cedula": "-", "tel1": "0959262964", "tel2": "0963752158", "direccion": "Av del Ejercito y Bolivia", "articulo": "Colchón 3 plz", "valor": 520, "saldo": 262, "ultimoPago": "", "vendedor": "George", "estado": "Activo", "semaforo": "Verde", "foto": null},
-                    {"idVenta": "987", "fecha": "2026-08-14", "nombre": "Alexandra Avila", "cedula": "-", "tel1": "0955857796", "tel2": "", "direccion": "21 y la I", "articulo": "Cama capitoneada", "valor": 340, "saldo": 110, "ultimoPago": "", "vendedor": "Almacén", "estado": "Activo", "semaforo": "Verde", "foto": null}
+                    {"idVenta": "981", "fecha": "2026-08-14", "nombre": "Cinthia Moran", "cedula": "-", "tel1": "0959262964", "tel2": "0963752158", "direccion": "Av del Ejercito y Bolivia", "articulo": "Colchón 3 plz", "valor": 520, "saldo": 262, "cuota": 20, "ultimoPago": "", "vendedor": "George", "estado": "Activo", "semaforo": "Verde", "foto": null},
+                    {"idVenta": "987", "fecha": "2026-08-14", "nombre": "Alexandra Avila", "cedula": "-", "tel1": "0955857796", "tel2": "", "direccion": "21 y la I", "articulo": "Cama capitoneada", "valor": 340, "saldo": 110, "cuota": 20, "ultimoPago": "", "vendedor": "Almacén", "estado": "Activo", "semaforo": "Verde", "foto": null}
                 ];
                 saveData();
             }
@@ -604,6 +592,7 @@
             renderCompras();
         });
 
+        // FIX 1: Limpieza de bordes verdes residuales en switchTab
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.nav-btn').forEach(el => {
@@ -724,6 +713,7 @@
                 document.getElementById('cli-direccion').value = c.direccion || '';
                 document.getElementById('cli-valor').value = c.valor !== undefined ? c.valor : '';
                 document.getElementById('cli-saldo').value = c.saldo !== undefined ? c.saldo : '';
+                document.getElementById('cli-cuota').value = c.cuota !== undefined ? c.cuota : '';
                 document.getElementById('cli-vendedor').value = c.vendedor || '';
                 document.getElementById('cli-estado').value = c.estado || 'Activo';
 
@@ -775,6 +765,7 @@
                 articulo: articuloFinal,
                 valor: parseFloat(document.getElementById('cli-valor').value || 0),
                 saldo: parseFloat(document.getElementById('cli-saldo').value || 0),
+                cuota: parseFloat(document.getElementById('cli-cuota').value || 20.00),
                 ultimoPago: idx !== '' ? (appData.clientes[idx].ultimoPago || '') : '',
                 vendedor: document.getElementById('cli-vendedor').value,
                 estado: document.getElementById('cli-estado').value,
@@ -958,7 +949,6 @@
             XLSX.writeFile(wb, `CRM Comercial Ethan.xlsx`);
         }
 
-        // Helper para obtener el rango exacto de semana (Lunes a Domingo)
         function getStartAndEndOfWeek(dateObj = new Date()) {
             const d = new Date(dateObj);
             d.setHours(0, 0, 0, 0);
@@ -989,12 +979,14 @@
             renderCalendario();
         }
 
+        // FIX 3: Manejo dinámico del valor de cuota por cliente en el calendario
         function renderCalendario() {
             const tbody = document.getElementById('tbody-calendario');
             tbody.innerHTML = '';
 
             const hoy = new Date();
             hoy.setHours(0,0,0,0);
+            const hoyStr = hoy.toISOString().split('T')[0];
             const { monday: inicioSemana, sunday: finSemana } = getStartAndEndOfWeek(hoy);
 
             let listaCalendario = [];
@@ -1004,7 +996,7 @@
 
                 if (!appData.calendario[index]) {
                     appData.calendario[index] = {
-                        fechaProgramada: c.fecha || hoy.toISOString().split('T')[0],
+                        fechaProgramada: hoyStr,
                         observacion: '',
                         estadoManual: null
                     };
@@ -1038,7 +1030,6 @@
                 });
             });
 
-            // Ordenamiento por Fecha
             listaCalendario.sort((a, b) => {
                 const fechaA = new Date(a.itemCal.fechaProgramada || '1970-01-01');
                 const fechaB = new Date(b.itemCal.fechaProgramada || '1970-01-01');
@@ -1062,6 +1053,8 @@
                     estadoBadge = `<button onclick="cycleEstadoCalendario(${clienteIndex})" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-calendar"></i> Programado</button>`;
                 }
 
+                const cuotaValor = c.cuota !== undefined ? parseFloat(c.cuota).toFixed(2) : '20.00';
+
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-blue-50 border-b transition-colors';
                 tr.innerHTML = `
@@ -1073,7 +1066,7 @@
                         </button>
                     </td>
                     <td class="p-3 text-gray-600">${c.tel1 || '-'}</td>
-                    <td class="p-3 text-gray-700 font-semibold">$20.00</td>
+                    <td class="p-3 text-gray-700 font-semibold">$${cuotaValor}</td>
                     <td class="p-3 font-bold text-red-600">$${(c.saldo || 0).toFixed(2)}</td>
                     <td class="p-3">
                         <input type="text" value="${itemCal.observacion || ''}" onchange="actualizarObservacionCalendario(${clienteIndex}, this.value)" placeholder="Añadir observación..." class="border border-gray-300 rounded px-2 py-1 text-xs w-48 bg-gray-50 focus:ring-1 focus:ring-green-500 outline-none">
@@ -1106,7 +1099,7 @@
         function actualizarFechaCalendario(index, val) {
             if(!appData.calendario[index]) return;
             appData.calendario[index].fechaProgramada = val;
-            appData.calendario[index].estadoManual = null; // Reinicia el cálculo de estado dinámico al ajustar fecha
+            appData.calendario[index].estadoManual = null;
         }
 
         function guardarFilaCalendario(index) {
@@ -1187,6 +1180,7 @@
             }
         }
 
+        // FIX 2: Sincronización precisa en tiempo real del campo 'ultimoPago'
         function actualizarUltimoPagoCliente(clienteNombre) {
             const cobrosCliente = appData.cobros.filter(c => c.cliente === clienteNombre);
             const indexCli = appData.clientes.findIndex(c => c.nombre === clienteNombre);
