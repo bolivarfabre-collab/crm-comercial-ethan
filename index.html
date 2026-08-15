@@ -214,7 +214,7 @@
                     <div id="secciones-semanales" class="space-y-4"></div>
                 </section>
 
-                <!-- 5. PESTAÑA CALENDARIO DE COBROS -->
+                <!-- 4. PESTAÑA CALENDARIO DE COBROS -->
                 <section id="sec-calendario" class="tab-content hidden space-y-4">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
                         <h2 class="text-2xl font-bold text-gray-800">Calendario y Recordatorios de Cobros</h2>
@@ -240,7 +240,9 @@
                         <table class="w-full text-left border-collapse text-xs md:text-sm whitespace-nowrap">
                             <thead>
                                 <tr class="bg-gray-900 text-white border-b uppercase font-semibold text-[11px] tracking-wider">
-                                    <th class="p-3">Próximo Pago</th>
+                                    <th onclick="toggleSortCalendario()" class="p-3 cursor-pointer hover:bg-gray-800 transition-colors select-none" title="Clic para alternar orden ascendente/descendente por fecha">
+                                        Próximo Pago <i id="cal-sort-icon" class="fa-solid fa-arrow-down-short-wide ml-1 text-green-400"></i>
+                                    </th>
                                     <th class="p-3">Estado</th>
                                     <th class="p-3">Cliente</th>
                                     <th class="p-3">Teléfono</th>
@@ -255,7 +257,7 @@
                     </div>
                 </section>
 
-                <!-- 4. PESTAÑA COMPRAS / INVENTARIO -->
+                <!-- 5. PESTAÑA COMPRAS / INVENTARIO -->
                 <section id="sec-inventario" class="tab-content hidden space-y-6">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
                         <h2 class="text-2xl font-bold text-gray-800">Compras e Inventario</h2>
@@ -477,7 +479,7 @@
         </div>
     </div>
 
-    <!-- Modal Ver Detalle / Imagen del Cliente (Imagen 3) -->
+    <!-- Modal Ver Detalle / Imagen del Cliente -->
     <div id="modal-ver-cliente" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl relative text-sm space-y-4">
             <button onclick="closeModal('modal-ver-cliente')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl font-bold">&times;</button>
@@ -527,6 +529,7 @@
         };
 
         let sortDirection = 'asc';
+        let calSortDirection = 'asc';
 
         function saveData() {
             localStorage.setItem('ethan_clientes', JSON.stringify(appData.clientes));
@@ -975,6 +978,17 @@
         // ==========================================
         // 4. CALENDARIO DE COBROS
         // ==========================================
+        function toggleSortCalendario() {
+            calSortDirection = calSortDirection === 'asc' ? 'desc' : 'asc';
+            const icon = document.getElementById('cal-sort-icon');
+            if (calSortDirection === 'asc') {
+                icon.className = "fa-solid fa-arrow-down-short-wide ml-1 text-green-400";
+            } else {
+                icon.className = "fa-solid fa-arrow-up-wide-short ml-1 text-green-400";
+            }
+            renderCalendario();
+        }
+
         function renderCalendario() {
             const tbody = document.getElementById('tbody-calendario');
             tbody.innerHTML = '';
@@ -983,13 +997,16 @@
             hoy.setHours(0,0,0,0);
             const { monday: inicioSemana, sunday: finSemana } = getStartAndEndOfWeek(hoy);
 
+            let listaCalendario = [];
+
             appData.clientes.forEach((c, index) => {
                 if (c.estado !== 'Activo') return;
 
                 if (!appData.calendario[index]) {
                     appData.calendario[index] = {
                         fechaProgramada: c.fecha || hoy.toISOString().split('T')[0],
-                        observacion: ''
+                        observacion: '',
+                        estadoManual: null
                     };
                 }
 
@@ -998,31 +1015,51 @@
 
                 let estadoCalculado = 'Pendiente';
 
-                // Si ya existe un pago registrado que cubre o iguala la fecha programada -> Al día
-                if (c.ultimoPago && new Date(c.ultimoPago + 'T00:00:00') >= fechaProg) {
-                    estadoCalculado = 'Al día';
-                } else if (fechaProg > finSemana) {
-                    // Programado para semanas posteriores
-                    estadoCalculado = 'Programado';
-                } else if (fechaProg < hoy) {
-                    // Días anteriores al actual en adelante sin pago
-                    estadoCalculado = 'Atrasado';
-                } else if (fechaProg >= hoy && fechaProg <= finSemana) {
-                    // Del día actual hasta el último día de la semana actual
-                    estadoCalculado = 'Pendiente';
+                if (itemCal.estadoManual) {
+                    estadoCalculado = itemCal.estadoManual;
+                } else {
+                    if (c.ultimoPago && new Date(c.ultimoPago + 'T00:00:00') >= fechaProg) {
+                        estadoCalculado = 'Al día';
+                    } else if (fechaProg > finSemana) {
+                        estadoCalculado = 'Programado';
+                    } else if (fechaProg < hoy) {
+                        estadoCalculado = 'Atrasado';
+                    } else if (fechaProg >= hoy && fechaProg <= finSemana) {
+                        estadoCalculado = 'Pendiente';
+                    }
                 }
 
                 itemCal.estado = estadoCalculado;
 
+                listaCalendario.push({
+                    clienteIndex: index,
+                    cliente: c,
+                    itemCal: itemCal
+                });
+            });
+
+            // Ordenamiento por Fecha
+            listaCalendario.sort((a, b) => {
+                const fechaA = new Date(a.itemCal.fechaProgramada || '1970-01-01');
+                const fechaB = new Date(b.itemCal.fechaProgramada || '1970-01-01');
+
+                if (fechaA < fechaB) return calSortDirection === 'asc' ? -1 : 1;
+                if (fechaA > fechaB) return calSortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            listaCalendario.forEach(({ clienteIndex, cliente: c, itemCal }) => {
                 let estadoBadge = '';
+                const estadoCalculado = itemCal.estado;
+
                 if (estadoCalculado === 'Al día') {
-                    estadoBadge = `<span class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-circle-check"></i> Al día</span>`;
+                    estadoBadge = `<button onclick="cycleEstadoCalendario(${clienteIndex})" class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-circle-check"></i> Al día</button>`;
                 } else if (estadoCalculado === 'Pendiente') {
-                    estadoBadge = `<span class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-clock"></i> Pendiente</span>`;
+                    estadoBadge = `<button onclick="cycleEstadoCalendario(${clienteIndex})" class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-clock"></i> Pendiente</button>`;
                 } else if (estadoCalculado === 'Atrasado') {
-                    estadoBadge = `<span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-triangle-exclamation"></i> Atrasado</span>`;
+                    estadoBadge = `<button onclick="cycleEstadoCalendario(${clienteIndex})" class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-triangle-exclamation"></i> Atrasado</button>`;
                 } else {
-                    estadoBadge = `<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"><i class="fa-solid fa-calendar"></i> Programado</span>`;
+                    estadoBadge = `<button onclick="cycleEstadoCalendario(${clienteIndex})" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-calendar"></i> Programado</button>`;
                 }
 
                 const tr = document.createElement('tr');
@@ -1031,7 +1068,7 @@
                     <td class="p-3 font-semibold text-gray-700">${itemCal.fechaProgramada}</td>
                     <td class="p-3">${estadoBadge}</td>
                     <td class="p-3">
-                        <button onclick="verClienteDetail(${index})" class="text-blue-600 font-bold hover:underline text-left">
+                        <button onclick="verClienteDetail(${clienteIndex})" class="text-blue-600 font-bold hover:underline text-left">
                             ${c.nombre || 'Sin nombre'}
                         </button>
                     </td>
@@ -1039,15 +1076,25 @@
                     <td class="p-3 text-gray-700 font-semibold">$20.00</td>
                     <td class="p-3 font-bold text-red-600">$${(c.saldo || 0).toFixed(2)}</td>
                     <td class="p-3">
-                        <input type="text" value="${itemCal.observacion || ''}" onchange="actualizarObservacionCalendario(${index}, this.value)" placeholder="Añadir observación..." class="border border-gray-300 rounded px-2 py-1 text-xs w-48 bg-gray-50 focus:ring-1 focus:ring-green-500 outline-none">
+                        <input type="text" value="${itemCal.observacion || ''}" onchange="actualizarObservacionCalendario(${clienteIndex}, this.value)" placeholder="Añadir observación..." class="border border-gray-300 rounded px-2 py-1 text-xs w-48 bg-gray-50 focus:ring-1 focus:ring-green-500 outline-none">
                     </td>
                     <td class="p-3 flex items-center gap-2">
-                        <input type="date" value="${itemCal.fechaProgramada}" onchange="actualizarFechaCalendario(${index}, this.value)" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50 focus:ring-1 focus:ring-green-500 outline-none">
-                        <button onclick="guardarFilaCalendario(${index})" class="bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 rounded text-xs shadow" title="Guardar fecha"><i class="fa-solid fa-floppy-disk"></i></button>
+                        <input type="date" value="${itemCal.fechaProgramada}" onchange="actualizarFechaCalendario(${clienteIndex}, this.value)" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50 focus:ring-1 focus:ring-green-500 outline-none">
+                        <button onclick="guardarFilaCalendario(${clienteIndex})" class="bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 rounded text-xs shadow" title="Guardar fecha"><i class="fa-solid fa-floppy-disk"></i></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        function cycleEstadoCalendario(index) {
+            if (!appData.calendario[index]) return;
+            const estados = ['Al día', 'Pendiente', 'Atrasado', 'Programado'];
+            const actual = appData.calendario[index].estado || 'Pendiente';
+            let nextIndex = (estados.indexOf(actual) + 1) % estados.length;
+            appData.calendario[index].estadoManual = estados[nextIndex];
+            saveData();
+            renderCalendario();
         }
 
         function actualizarObservacionCalendario(index, val) {
@@ -1059,6 +1106,7 @@
         function actualizarFechaCalendario(index, val) {
             if(!appData.calendario[index]) return;
             appData.calendario[index].fechaProgramada = val;
+            appData.calendario[index].estadoManual = null; // Reinicia el cálculo de estado dinámico al ajustar fecha
         }
 
         function guardarFilaCalendario(index) {
