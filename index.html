@@ -496,19 +496,35 @@
     </div>
 
     <!-- JAVASCRIPT LÓGICA CRM -->
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-            
-            sidebar.classList.toggle('-translate-x-full');
-            
+    <script type="module">
+    // --- CONEXIÓN FIREBASE ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+    apiKey: "AIzaSyAyFZ3jVHnFqEzTfz3lPeuLXXERhbzvEBc",
+    authDomain: "comercial-ethan.firebaseapp.com",
+    projectId: "comercial-ethan",
+    storageBucket: "comercial-ethan.firebasestorage.app",
+    messagingSenderId: "984315140368",
+    appId: "1:984315140368:web:173580012bc5cf559a6d95"
+    }; 
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+        // Exponer funciones al scope global para los onclick del HTML
+window.toggleSidebar = function() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    sidebar.classList.toggle('-translate-x-full');
+    
             if(sidebar.classList.contains('-translate-x-full')) {
                 overlay.classList.add('hidden');
             } else {
                 overlay.classList.remove('hidden');
             }
-        }
+        };
 
         let appData = {
             clientes: JSON.parse(localStorage.getItem('ethan_clientes')) || [],
