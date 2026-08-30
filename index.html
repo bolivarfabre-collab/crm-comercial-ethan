@@ -1676,6 +1676,8 @@ window.toggleSidebar = function() {
         }
 
         // EXPOSICIÓN DE FUNCIONES A WINDOW PARA EVENTOS ONCLICK EN EL HTML
+        window.renderClientes = renderClientes;            
+        window.renderClientesActivos = renderClientesActivos;
         window.toggleEstado = toggleEstado;
         window.cycleSemaforo = cycleSemaforo;
         window.deleteCliente = deleteCliente;
