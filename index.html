@@ -11,6 +11,28 @@
     <!-- SheetJS (Excel Export) CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- Firebase SDKs (Versión Compat CDN) -->
+    <!-- Firebase App (Core) y Firestore SDKs Versión Compat -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<script>
+  // Tu configuración de Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyAyFZ3jVHnFqEzTfz3lPeuLXXERhbzvEBc",
+    authDomain: "comercial-ethan.firebaseapp.com",
+    projectId: "comercial-ethan",
+    storageBucket: "comercial-ethan.firebasestorage.app",
+    messagingSenderId: "984315140368",
+    appId: "1:984315140368:web:173580012bc5cf559a6d95"
+  };
+
+  // Inicializar Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // Exponer db globalmente para que tus funciones lo usen sin problema
+  window.db = db;
+</script>
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
