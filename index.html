@@ -16,7 +16,7 @@
         #sidebar { transition: transform 0.3s ease-in-out; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800 flex h-[100dvh] overflow-hidden">
+<body class="bg-gray-100 text-gray-800 h-[100dvh] overflow-y-auto">
 
     <!-- PANTALLA DE INICIO DE SESIÓN -->
     <div id="login-screen" class="fixed inset-0 bg-gray-900 z-50 flex items-center justify-center p-4">
@@ -100,7 +100,7 @@
     <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-30 hidden xl:hidden"></div>
 
     <!-- CONTENEDOR PRINCIPAL A LA DERECHA -->
-    <div class="flex-1 flex flex-col h-full relative">
+    <div class="flex-1 flex flex-col min-w-0">
         <header class="xl:hidden bg-gray-900 text-white p-4 shadow-md flex items-center justify-between z-20">
             <div class="flex items-center gap-2">
                 <div class="bg-green-600 p-1.5 rounded font-bold text-sm">
