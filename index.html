@@ -606,21 +606,66 @@ window.toggleSidebar = function() {
             }
         };
 
-        let appData = {
-            clientes: JSON.parse(localStorage.getItem('ethan_clientes')) || [],
-            cobros: JSON.parse(localStorage.getItem('ethan_cobros')) || [],
-            compras: JSON.parse(localStorage.getItem('ethan_compras')) || [],
-            calendario: JSON.parse(localStorage.getItem('ethan_calendario')) || {}
-        };
+       let appData = {
+    clientes: [],
+    cobros: [],
+    compras: [],
+    calendario: {}
+};
 
-        let sortDirection = 'asc';
-        let calSortDirection = 'asc';
+let sortDirection = 'asc';
+let calSortDirection = 'asc';
 
-        function saveData() {
-            localStorage.setItem('ethan_clientes', JSON.stringify(appData.clientes));
-            localStorage.setItem('ethan_cobros', JSON.stringify(appData.cobros));
-            localStorage.setItem('ethan_compras', JSON.stringify(appData.compras));
-            localStorage.setItem('ethan_calendario', JSON.stringify(appData.calendario));
+// Función para cargar los datos desde Firebase al iniciar
+async function cargarDatosFirebase() {
+    try {
+        const docRef = db.collection("comercial_ethan").doc("datos_principales");
+        const doc = await docRef.get();
+        
+        if (doc.exists) {
+            appData = doc.data();
+            console.log("Datos cargados desde Firebase con éxito.");
+        } else {
+            console.log("No hay datos en Firebase, inicializando vacíos...");
+            await saveData(); // Crea el documento vacío si no existe
+        }
+        
+        // Si tienes una función que renderiza o pinta la tabla en tu app, llámala aquí:
+        if (typeof renderTable === 'function') renderTable();
+        if (typeof actualizarVista === 'function') actualizarVista();
+        
+    } catch (error) {
+        console.error("Error al cargar desde Firebase:", error);
+        // Fallback a localStorage por si falla el internet momentáneamente
+        appData.clientes = JSON.parse(localStorage.getItem('ethan_clientes')) || [];
+        appData.cobros = JSON.parse(localStorage.getItem('ethan_cobros')) || [];
+        appData.compras = JSON.parse(localStorage.getItem('ethan_compras')) || [];
+        appData.calendario = JSON.parse(localStorage.getItem('ethan_calendario')) || {};
+    }
+}
+
+// Función para guardar los datos tanto en la nube como en respaldo local
+async function saveData() {
+    // Respaldo local inmediato para evitar retrasos visuales
+    localStorage.setItem('ethan_clientes', JSON.stringify(appData.clientes));
+    localStorage.setItem('ethan_cobros', JSON.stringify(appData.cobros));
+    localStorage.setItem('ethan_compras', JSON.stringify(appData.compras));
+    localStorage.setItem('ethan_calendario', JSON.stringify(appData.calendario));
+
+    // Guardado oficial en la nube de Firebase Firestore
+    try {
+        await db.collection("comercial_ethan").doc("datos_principales").set(appData);
+        console.log("Datos guardados en Firebase correctamente.");
+    } catch (error) {
+        console.error("Error al guardar en Firebase:", error);
+        alert("Aviso: Los cambios se guardaron localmente, pero hubo un problema al sincronizar con la nube.");
+    }
+}
+
+// Ejecutar la carga al iniciar la página
+window.addEventListener('DOMContentLoaded', () => {
+    cargarDatosFirebase();
+});
         }
 
         function exportarBaseDeDatos() {
