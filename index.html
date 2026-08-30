@@ -1243,7 +1243,7 @@ window.toggleSidebar = function() {
                     if(isEdit) {
                         const cobroViejo = appData.cobros[document.getElementById('cob-index').value];
                         if(cobroViejo.cliente === cli.nombre) saldoReferencia += parseFloat(cobroViejo.pago || 0);
-                    }
+}
                 }
                 
                 const pago = parseFloat(document.getElementById('cob-pago').value || 0);
@@ -1252,7 +1252,7 @@ window.toggleSidebar = function() {
             }
         }
 
-        // FIX 2: Sincronización precisa en tiempo real del campo 'ultimoPago'
+        // Sincronización precisa en tiempo real del campo 'ultimoPago'
         function actualizarUltimoPagoCliente(clienteNombre) {
             const cobrosCliente = appData.cobros.filter(c => c.cliente === clienteNombre);
             const indexCli = appData.clientes.findIndex(c => c.nombre === clienteNombre);
@@ -1265,33 +1265,39 @@ window.toggleSidebar = function() {
                     appData.clientes[indexCli].ultimoPago = '';
                 }
             }
-        }
+        } 
 
         function saveCobro(e) {
             e.preventDefault();
             const idx = document.getElementById('cob-index').value;
             const select = document.getElementById('cob-cliente');
-            const cliIndex = select.options[select.selectedIndex].dataset.index;
+            const nombreCliente = select.value;
             const nuevoPago = parseFloat(document.getElementById('cob-pago').value || 0);
             const fechaCobro = document.getElementById('cob-fecha').value;
-            const nombreCliente = select.value;
             
             let saldoFinal = 0;
-
+            
             if (idx !== '') {
+                // 1. Revertir impacto del cobro anterior en el cliente original
                 const oldCobro = appData.cobros[idx];
                 const oldCliIndex = appData.clientes.findIndex(c => c.nombre === oldCobro.cliente);
                 if (oldCliIndex !== -1) {
                     appData.clientes[oldCliIndex].saldo = (appData.clientes[oldCliIndex].saldo || 0) + parseFloat(oldCobro.pago || 0);
+                    if (appData.clientes[oldCliIndex].saldo > 0) {
+                        appData.clientes[oldCliIndex].estado = 'Activo';
+                    }
                 }
                 
-                if (cliIndex !== undefined) {
-                    appData.clientes[cliIndex].saldo = (appData.clientes[cliIndex].saldo || 0) - nuevoPago;
-                    if(appData.clientes[cliIndex].saldo < 0) appData.clientes[cliIndex].saldo = 0;
-                    if(appData.clientes[cliIndex].saldo === 0) appData.clientes[cliIndex].estado = 'Inactivo';
-                    saldoFinal = appData.clientes[cliIndex].saldo;
+                // 2. Aplicar el nuevo pago al cliente seleccionado
+                const newCliIndex = appData.clientes.findIndex(c => c.nombre === nombreCliente);
+                if (newCliIndex !== -1) {
+                    appData.clientes[newCliIndex].saldo = (appData.clientes[newCliIndex].saldo || 0) - nuevoPago;
+                    if (appData.clientes[newCliIndex].saldo < 0) appData.clientes[newCliIndex].saldo = 0;
+                    if (appData.clientes[newCliIndex].saldo === 0) appData.clientes[newCliIndex].estado = 'Inactivo';
+                    saldoFinal = appData.clientes[newCliIndex].saldo;
                 }
 
+                // 3. Actualizar objeto de cobro
                 appData.cobros[idx] = {
                     fecha: fechaCobro,
                     cliente: nombreCliente,
@@ -1301,14 +1307,16 @@ window.toggleSidebar = function() {
                 };
 
                 actualizarUltimoPagoCliente(oldCobro.cliente);
-                if(oldCobro.cliente !== nombreCliente) actualizarUltimoPagoCliente(nombreCliente);
+                if (oldCobro.cliente !== nombreCliente) actualizarUltimoPagoCliente(nombreCliente);
 
             } else {
-                if (cliIndex !== undefined) {
-                    appData.clientes[cliIndex].saldo = (appData.clientes[cliIndex].saldo || 0) - nuevoPago;
-                    if(appData.clientes[cliIndex].saldo < 0) appData.clientes[cliIndex].saldo = 0;
-                    if(appData.clientes[cliIndex].saldo === 0) appData.clientes[cliIndex].estado = 'Inactivo';
-                    saldoFinal = appData.clientes[cliIndex].saldo;
+                // Registro de cobro nuevo
+                const newCliIndex = appData.clientes.findIndex(c => c.nombre === nombreCliente);
+                if (newCliIndex !== -1) {
+                    appData.clientes[newCliIndex].saldo = (appData.clientes[newCliIndex].saldo || 0) - nuevoPago;
+                    if (appData.clientes[newCliIndex].saldo < 0) appData.clientes[newCliIndex].saldo = 0;
+                    if (appData.clientes[newCliIndex].saldo === 0) appData.clientes[newCliIndex].estado = 'Inactivo';
+                    saldoFinal = appData.clientes[newCliIndex].saldo;
                 }
 
                 appData.cobros.push({
@@ -1321,7 +1329,7 @@ window.toggleSidebar = function() {
                 
                 actualizarUltimoPagoCliente(nombreCliente);
             }
-
+            
             saveData();
             closeModal('modal-cobro');
             renderCobros();
@@ -1331,9 +1339,15 @@ window.toggleSidebar = function() {
         }
 
         function getWeekKey(dateStr) {
-            const dateObj = new Date(dateStr + 'T00:00:00');
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const dateObj = new Date(year, month - 1, day);
             const { monday } = getStartAndEndOfWeek(dateObj);
-            return `Semana del Lunes ${monday.toISOString().split('T')[0]}`;
+            
+            // Formato YYYY-MM-DD local sin desfase UTC
+            const yyyy = monday.getFullYear();
+            const mm = String(monday.getMonth() + 1).padStart(2, '0');
+            const dd = String(monday.getDate()).padStart(2, '0');
+            return `Semana del Lunes ${yyyy}-${mm}-${dd}`;
         }
 
         function renderCobros() {
@@ -1547,19 +1561,17 @@ window.toggleSidebar = function() {
                 document.getElementById('modal-ver-factura').classList.remove('hidden');
             }
         }
- // EXPOSICIÓN DE FUNCIONES A WINDOW PARA EVENTOS ONCLICK EN EL HTML
-window.toggleEstado = toggleEstado;
-window.cycleSemaforo = cycleSemaforo;
-window.deleteCliente = deleteCliente;
-window.verClienteDetail = verClienteDetail;
-window.toggleEstado = toggleEstado;
-window.cycleSemaforo = cycleSemaforo;
-window.deleteCliente = deleteCliente;
-window.verClienteDetail = verClienteDetail;
-window.deleteCompra = deleteCompra;
-window.verFactura = verFactura;
 
-        
+        // EXPOSICIÓN DE FUNCIONES A WINDOW PARA EVENTOS ONCLICK EN EL HTML
+        window.toggleEstado = toggleEstado;
+        window.cycleSemaforo = cycleSemaforo;
+        window.deleteCliente = deleteCliente;
+        window.verClienteDetail = verClienteDetail;
+        window.openModalCobro = openModalCobro;
+        window.deleteCobro = deleteCobro;
+        window.openModalCompra = openModalCompra;
+        window.deleteCompra = deleteCompra;
+        window.verFactura = verFactura;
     </script>
 </body>
 </html>
