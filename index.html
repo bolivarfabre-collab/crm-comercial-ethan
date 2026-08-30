@@ -574,7 +574,7 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// Función global para procesar el Login
+// Función global para procesar el login
 window.iniciarSesion = async function(event) {
     event.preventDefault();
     const email = document.getElementById('login-email').value;
@@ -583,9 +583,11 @@ window.iniciarSesion = async function(event) {
 
     try {
         if (errorDiv) errorDiv.classList.add('hidden');
-   await firebase.auth().signInWithEmailAndPassword(email, password);
         
-        // ¡Esto era lo que faltaba! Ocultar login y cargar la base de datos
+        // Sintaxis correcta para Firebase Modular (v9+)
+        await signInWithEmailAndPassword(auth, email, password);
+        
+        // Ocultar login y cargar la base de datos
         document.getElementById('login-screen').style.display = 'none';
         if (typeof cargarDatosFirebase === 'function') {
             cargarDatosFirebase();
