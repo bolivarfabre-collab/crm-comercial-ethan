@@ -10,31 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- SheetJS (Excel Export) CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- Firebase SDKs (Versión Compat CDN) -->
-    <!-- Firebase App (Core) y Firestore SDKs Versión Compat -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-
-<script>
-  // Tu configuración de Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyAyFZ3jVHnFqEzTfz3lPeuLXXERhbzvEBc",
-    authDomain: "comercial-ethan.firebaseapp.com",
-    projectId: "comercial-ethan",
-    storageBucket: "comercial-ethan.firebasestorage.app",
-    messagingSenderId: "984315140368",
-    appId: "1:984315140368:web:173580012bc5cf559a6d95"
-  };
-
-  // Inicializar Firebase
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-
-  // Exponer db globalmente para que tus funciones lo usen sin problema
-  window.db = db;
-</script>
-
-    <style>
+    <!-- Firebase se carga una sola vez con el SDK modular al final del documento. -->
+<style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #sidebar { transition: transform 0.3s ease-in-out; }
     </style>
@@ -545,10 +522,11 @@
 
     <!-- JAVASCRIPT LÓGICA CRM -->
     <script type="module">
- // --- CONEXIÓN FIREBASE & AUTHENTICATION ---
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+// --- CONEXIÓN FIREBASE & AUTENTICACIÓN ---
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAyFZ3jVHnFqEzTfz3lPeuLXXERhbzvEBc",
@@ -562,124 +540,190 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
+const dataRef = doc(db, "comercial_ethan", "datos_principales");
 
-// Escuchar cambios de sesión
-onAuthStateChanged(auth, (user) => {
-    const loginScreen = document.getElementById('login-screen');
-    if (user) {
-        if (loginScreen) loginScreen.classList.add('hidden');
-        if (window.cargarDatosFirebase) window.cargarDatosFirebase();
-    } else {
-        if (loginScreen) loginScreen.classList.remove('hidden');
+const emptyData = () => ({ clientes: [], cobros: [], compras: [], calendario: {} });
+let appData = emptyData();
+let sortDirection = 'asc';
+let calSortDirection = 'asc';
+let unsubscribeData = null;
+let writeQueue = Promise.resolve();
+let isLoadingData = false;
+
+function formatLocalDate(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function createClientKey() {
+    return window.crypto?.randomUUID?.() || `cliente_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+function safeParseLocal(key, fallback) {
+    try {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : fallback;
+    } catch (error) {
+        console.warn(`No se pudo leer el respaldo local ${key}.`, error);
+        return fallback;
     }
+}
+
+function readLocalData() {
+    return {
+        clientes: safeParseLocal('ethan_clientes', []),
+        cobros: safeParseLocal('ethan_cobros', []),
+        compras: safeParseLocal('ethan_compras', []),
+        calendario: safeParseLocal('ethan_calendario', {})
+    };
+}
+
+function normalizeAppData(rawData = emptyData()) {
+    const raw = rawData && typeof rawData === 'object' ? rawData : emptyData();
+    const legacyCalendar = raw.calendario && typeof raw.calendario === 'object' ? raw.calendario : {};
+    const clientes = Array.isArray(raw.clientes) ? raw.clientes.map((cliente, index) => ({
+        ...cliente,
+        _calendarKey: cliente?._calendarKey || `cliente_${cliente?.idVenta || index}_${createClientKey()}`
+    })) : [];
+    const calendario = {};
+
+    clientes.forEach((cliente, index) => {
+        const key = cliente._calendarKey;
+        // Migra el calendario antiguo, que usaba el índice del cliente como clave.
+        if (legacyCalendar[key]) calendario[key] = legacyCalendar[key];
+        else if (legacyCalendar[index]) calendario[key] = legacyCalendar[index];
+    });
+
+    return {
+        clientes,
+        cobros: Array.isArray(raw.cobros) ? raw.cobros : [],
+        compras: Array.isArray(raw.compras) ? raw.compras : [],
+        calendario
+    };
+}
+
+function persistLocalData() {
+    localStorage.setItem('ethan_clientes', JSON.stringify(appData.clientes));
+    localStorage.setItem('ethan_cobros', JSON.stringify(appData.cobros));
+    localStorage.setItem('ethan_compras', JSON.stringify(appData.compras));
+    localStorage.setItem('ethan_calendario', JSON.stringify(appData.calendario));
+}
+
+function renderAll() {
+    renderClientes();
+    renderClientesActivos();
+    renderCobros();
+    renderCalendario();
+    renderCompras();
+}
+
+function seedData() {
+    return {
+        clientes: [
+            {"idVenta": "981", "fecha": "2026-08-14", "nombre": "Cinthia Moran", "cedula": "-", "tel1": "0959262964", "tel2": "0963752158", "direccion": "Av del Ejercito y Bolivia", "articulo": "Colchón 3 plz", "valor": 520, "saldo": 262, "cuota": 20, "ultimoPago": "", "vendedor": "George", "estado": "Activo", "semaforo": "Verde", "foto": null},
+            {"idVenta": "987", "fecha": "2026-08-14", "nombre": "Alexandra Avila", "cedula": "-", "tel1": "0955857796", "tel2": "", "direccion": "21 y la I", "articulo": "Cama capitoneada", "valor": 340, "saldo": 110, "cuota": 20, "ultimoPago": "", "vendedor": "Almacén", "estado": "Activo", "semaforo": "Verde", "foto": null}
+        ],
+        cobros: [], compras: [], calendario: {}
+    };
+}
+
+async function saveData() {
+    persistLocalData();
+    if (!auth.currentUser) return false;
+
+    // Serializa las escrituras para que un guardado anterior no pise uno más reciente.
+    const snapshot = JSON.parse(JSON.stringify(appData));
+    writeQueue = writeQueue
+        .catch(() => false)
+        .then(() => setDoc(dataRef, snapshot))
+        .then(() => true)
+        .catch((error) => {
+            console.error('Error al guardar en Firebase. El respaldo local se conservó.', error);
+            return false;
+        });
+    return writeQueue;
+}
+window.saveData = saveData;
+
+async function cargarDatosFirebase() {
+    isLoadingData = true;
+    try {
+        const docSnap = await getDoc(dataRef);
+        if (docSnap.exists()) {
+            appData = normalizeAppData(docSnap.data());
+            persistLocalData();
+        } else {
+            const localData = readLocalData();
+            const hasLocalData = localData.clientes.length || localData.cobros.length || localData.compras.length;
+            appData = normalizeAppData(hasLocalData ? localData : seedData());
+            await saveData();
+        }
+        renderAll();
+    } catch (error) {
+        console.error('Error al cargar desde Firebase; se usará el respaldo local.', error);
+        appData = normalizeAppData(readLocalData());
+        renderAll();
+    } finally {
+        isLoadingData = false;
+    }
+}
+window.cargarDatosFirebase = cargarDatosFirebase;
+
+function startRealtimeSync() {
+    if (unsubscribeData) unsubscribeData();
+    unsubscribeData = onSnapshot(dataRef, (snapshot) => {
+        if (!snapshot.exists() || snapshot.metadata.hasPendingWrites || isLoadingData) return;
+        appData = normalizeAppData(snapshot.data());
+        persistLocalData();
+        renderAll();
+    }, (error) => console.error('Error en la sincronización en tiempo real:', error));
+}
+
+onAuthStateChanged(auth, async (user) => {
+    const loginScreen = document.getElementById('login-screen');
+    if (!user) {
+        if (unsubscribeData) { unsubscribeData(); unsubscribeData = null; }
+        if (loginScreen) loginScreen.classList.remove('hidden');
+        return;
+    }
+    if (loginScreen) loginScreen.classList.add('hidden');
+    await cargarDatosFirebase();
+    startRealtimeSync();
 });
 
-// Función global para procesar el login
 window.iniciarSesion = async function(event) {
     event.preventDefault();
-    const email = document.getElementById('login-email').value;
+    const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
     const errorDiv = document.getElementById('login-error');
-
     try {
         if (errorDiv) errorDiv.classList.add('hidden');
-        
-        // Sintaxis correcta para Firebase Modular (v9+)
         await signInWithEmailAndPassword(auth, email, password);
-        
-        // Ocultar login y cargar la base de datos
-        document.getElementById('login-screen').style.display = 'none';
-        if (typeof cargarDatosFirebase === 'function') {
-            cargarDatosFirebase();
-        }
-        
     } catch (error) {
-        console.error("Error al iniciar sesión:", error);
+        console.error('Error al iniciar sesión:', error);
         if (errorDiv) {
-            errorDiv.textContent = "Error: Credenciales incorrectas.";
+            errorDiv.textContent = 'No se pudo iniciar sesión. Verifica tu correo, contraseña y conexión.';
             errorDiv.classList.remove('hidden');
         }
     }
 };
 
-        // Exponer funciones al scope global para los onclick del HTML
 window.toggleSidebar = function() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
     sidebar.classList.toggle('-translate-x-full');
-    
-            if(sidebar.classList.contains('-translate-x-full')) {
-                overlay.classList.add('hidden');
-            } else {
-                overlay.classList.remove('hidden');
-            }
-        };
-
-       let appData = {
-    clientes: [],
-    cobros: [],
-    compras: [],
-    calendario: {}
+    overlay.classList.toggle('hidden', sidebar.classList.contains('-translate-x-full'));
 };
 
-let sortDirection = 'asc';
-let calSortDirection = 'asc';
-
-// Función para cargar los datos desde Firebase al iniciar
-window.cargarDatosFirebase = async function() {
-    try {
-        const docRef = doc(db, "comercial_ethan", "datos_principales");
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            appData = docSnap.data();
-            console.log("Datos cargados desde Firebase con éxito.");
-        } else {
-            console.log("No hay datos en Firebase, inicializando vacíos...");
-            await window.saveData();
-        }
-
-        if (typeof renderTable === 'function') renderTable();
-        if (typeof actualizarVista === 'function') actualizarVista();
-
-    } catch (error) {
-        console.error("Error al cargar desde Firebase:", error);
-        appData.clientes = JSON.parse(localStorage.getItem('ethan_clientes')) || [];
-        appData.cobros = JSON.parse(localStorage.getItem('ethan_cobros')) || [];
-        appData.compras = JSON.parse(localStorage.getItem('ethan_compras')) || [];
-        appData.calendario = JSON.parse(localStorage.getItem('ethan_calendario')) || {};
-    }
-};
-
-// Función para guardar los datos tanto en la nube como en respaldo local
-async function saveData() {
-    // Respaldo local inmediato para evitar retrasos visuales
-    localStorage.setItem('ethan_clientes', JSON.stringify(appData.clientes));
-    localStorage.setItem('ethan_cobros', JSON.stringify(appData.cobros));
-    localStorage.setItem('ethan_compras', JSON.stringify(appData.compras));
-    localStorage.setItem('ethan_calendario', JSON.stringify(appData.calendario));
-
-    // Guardado oficial en la nube de Firebase Firestore
-    try {
-        await db.collection("comercial_ethan").doc("datos_principales").set(appData);
-        console.log("Datos guardados en Firebase correctamente.");
-    } catch (error) {
-        console.error("Error al guardar en Firebase:", error);
-        alert("Aviso: Los cambios se guardaron localmente, pero hubo un problema al sincronizar con la nube.");
-    }
-}
-
-// Ejecutar la carga al iniciar la página
-window.addEventListener('DOMContentLoaded', () => {
-    cargarDatosFirebase();
-});
-        
         function exportarBaseDeDatos() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
             
-            const fechaHoy = new Date().toISOString().split('T')[0];
+            const fechaHoy = formatLocalDate();
             downloadAnchor.setAttribute("download", `comercial_ethan_backup_${fechaHoy}.json`);
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
@@ -697,11 +741,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     
                     if (importedData.clientes && importedData.cobros && importedData.compras) {
                         if (confirm('¿Estás seguro de importar esta base de datos? Se sobrescribirá toda la información actual en este dispositivo.')) {
-                            appData.clientes = importedData.clientes;
-                            appData.cobros = importedData.cobros;
-                            appData.compras = importedData.compras;
-                            appData.calendario = importedData.calendario || {};
-                            
+                            appData = normalizeAppData(importedData);
                             saveData();
                             
                             renderClientes();
@@ -710,7 +750,7 @@ window.addEventListener('DOMContentLoaded', () => {
                             renderCalendario();
                             renderCompras();
                             
-                            alert('¡Base de datos importada y sincronizada exitosamente!');
+                            alert('¡Base de datos importada! Se guardó localmente y se sincronizará con Firebase si la sesión está activa.');
                         }
                     } else {
                         alert('El archivo seleccionado no tiene el formato correcto de respaldo de Comercial Ethan.');
@@ -723,21 +763,6 @@ window.addEventListener('DOMContentLoaded', () => {
             };
             reader.readAsText(file);
         }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            if(appData.clientes.length === 0) {
-                appData.clientes = [
-                    {"idVenta": "981", "fecha": "2026-08-14", "nombre": "Cinthia Moran", "cedula": "-", "tel1": "0959262964", "tel2": "0963752158", "direccion": "Av del Ejercito y Bolivia", "articulo": "Colchón 3 plz", "valor": 520, "saldo": 262, "cuota": 20, "ultimoPago": "", "vendedor": "George", "estado": "Activo", "semaforo": "Verde", "foto": null},
-                    {"idVenta": "987", "fecha": "2026-08-14", "nombre": "Alexandra Avila", "cedula": "-", "tel1": "0955857796", "tel2": "", "direccion": "21 y la I", "articulo": "Cama capitoneada", "valor": 340, "saldo": 110, "cuota": 20, "ultimoPago": "", "vendedor": "Almacén", "estado": "Activo", "semaforo": "Verde", "foto": null}
-                ];
-                saveData();
-            }
-            renderClientes();
-            renderClientesActivos();
-            renderCobros();
-            renderCalendario();
-            renderCompras();
-        });
 
         // FIX 1: Limpieza de bordes verdes residuales en switchTab
         function switchTab(tabId) {
@@ -768,14 +793,12 @@ window.addEventListener('DOMContentLoaded', () => {
             document.getElementById(id).classList.add('hidden');
         }
 
-        function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                if(!file) resolve(null);
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-                reader.readAsDataURL(file);
-            });
+        async function uploadFileToStorage(file, folder) {
+            if (!file) return null;
+            const cleanName = (file.name || 'archivo').replace(/[^a-zA-Z0-9._-]/g, '_');
+            const fileRef = ref(storage, `${folder}/${Date.now()}_${createClientKey()}_${cleanName}`);
+            await uploadBytes(fileRef, file, { contentType: file.type || 'application/octet-stream' });
+            return getDownloadURL(fileRef);
         }
 
         // ==========================================
@@ -871,7 +894,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     agregarCampoArticulo('Colchón 2 plz');
                 }
             } else {
-                document.getElementById('cli-fecha').value = new Date().toISOString().split('T')[0];
+                document.getElementById('cli-fecha').value = formatLocalDate();
                 agregarCampoArticulo('Colchón 2 plz');
             }
 
@@ -885,7 +908,13 @@ window.addEventListener('DOMContentLoaded', () => {
             let fotoBase64 = idx !== '' ? appData.clientes[idx].foto : null;
 
             if (fileInput.files.length > 0) {
-                fotoBase64 = await fileToBase64(fileInput.files[0]);
+                try {
+                    fotoBase64 = await uploadFileToStorage(fileInput.files[0], 'clientes');
+                } catch (error) {
+                    console.error('No se pudo subir el documento del cliente.', error);
+                    alert('No se pudo subir el documento. Revisa que Firebase Storage esté habilitado y que sus reglas permitan la carga.');
+                    return;
+                }
             }
 
             const articleRows = document.querySelectorAll('.article-row');
@@ -917,7 +946,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 vendedor: document.getElementById('cli-vendedor').value,
                 estado: document.getElementById('cli-estado').value,
                 semaforo: idx !== '' ? (appData.clientes[idx].semaforo || 'Verde') : 'Verde',
-                foto: fotoBase64
+                foto: fotoBase64,
+                _calendarKey: idx !== '' ? appData.clientes[idx]._calendarKey : createClientKey()
             };
 
             if (idx === '') {
@@ -1133,7 +1163,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
             const hoy = new Date();
             hoy.setHours(0,0,0,0);
-            const hoyStr = hoy.toISOString().split('T')[0];
+            const hoyStr = formatLocalDate(hoy);
             const { monday: inicioSemana, sunday: finSemana } = getStartAndEndOfWeek(hoy);
 
             let listaCalendario = [];
@@ -1141,15 +1171,16 @@ window.addEventListener('DOMContentLoaded', () => {
             appData.clientes.forEach((c, index) => {
                 if (c.estado !== 'Activo') return;
 
-                if (!appData.calendario[index]) {
-                    appData.calendario[index] = {
+                const calendarKey = c._calendarKey;
+                if (!appData.calendario[calendarKey]) {
+                    appData.calendario[calendarKey] = {
                         fechaProgramada: hoyStr,
                         observacion: '',
                         estadoManual: null
                     };
                 }
 
-                const itemCal = appData.calendario[index];
+                const itemCal = appData.calendario[calendarKey];
                 const fechaProg = itemCal.fechaProgramada ? new Date(itemCal.fechaProgramada + 'T00:00:00') : hoy;
 
                 let estadoCalculado = 'Pendiente';
@@ -1172,6 +1203,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
                 listaCalendario.push({
                     clienteIndex: index,
+                    calendarKey,
                     cliente: c,
                     itemCal: itemCal
                 });
@@ -1186,18 +1218,18 @@ window.addEventListener('DOMContentLoaded', () => {
                 return 0;
             });
 
-            listaCalendario.forEach(({ clienteIndex, cliente: c, itemCal }) => {
+            listaCalendario.forEach(({ clienteIndex, calendarKey, cliente: c, itemCal }) => {
                 let estadoBadge = '';
                 const estadoCalculado = itemCal.estado;
 
                 if (estadoCalculado === 'Al día') {
-                    estadoBadge = `<button onclick="cycleEstadoCalendario(${clienteIndex})" class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-circle-check"></i> Al día</button>`;
+                    estadoBadge = `<button onclick="cycleEstadoCalendario('${calendarKey}')" class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-circle-check"></i> Al día</button>`;
                 } else if (estadoCalculado === 'Pendiente') {
-                    estadoBadge = `<button onclick="cycleEstadoCalendario(${clienteIndex})" class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-clock"></i> Pendiente</button>`;
+                    estadoBadge = `<button onclick="cycleEstadoCalendario('${calendarKey}')" class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-clock"></i> Pendiente</button>`;
                 } else if (estadoCalculado === 'Atrasado') {
-                    estadoBadge = `<button onclick="cycleEstadoCalendario(${clienteIndex})" class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-triangle-exclamation"></i> Atrasado</button>`;
+                    estadoBadge = `<button onclick="cycleEstadoCalendario('${calendarKey}')" class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-triangle-exclamation"></i> Atrasado</button>`;
                 } else {
-                    estadoBadge = `<button onclick="cycleEstadoCalendario(${clienteIndex})" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-calendar"></i> Programado</button>`;
+                    estadoBadge = `<button onclick="cycleEstadoCalendario('${calendarKey}')" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm hover:opacity-80 transition-opacity" title="Clic para cambiar estado manual"><i class="fa-solid fa-calendar"></i> Programado</button>`;
                 }
 
                 const cuotaValor = c.cuota !== undefined ? parseFloat(c.cuota).toFixed(2) : '20.00';
@@ -1216,11 +1248,11 @@ window.addEventListener('DOMContentLoaded', () => {
                     <td class="p-3 text-gray-700 font-semibold">$${cuotaValor}</td>
                     <td class="p-3 font-bold text-red-600">$${(c.saldo || 0).toFixed(2)}</td>
                     <td class="p-3">
-                        <input type="text" value="${itemCal.observacion || ''}" onchange="actualizarObservacionCalendario(${clienteIndex}, this.value)" placeholder="Añadir observación..." class="border border-gray-300 rounded px-2 py-1 text-xs w-48 bg-gray-50 focus:ring-1 focus:ring-green-500 outline-none">
+                        <input type="text" value="${itemCal.observacion || ''}" onchange="actualizarObservacionCalendario('${calendarKey}', this.value)" placeholder="Añadir observación..." class="border border-gray-300 rounded px-2 py-1 text-xs w-48 bg-gray-50 focus:ring-1 focus:ring-green-500 outline-none">
                     </td>
                     <td class="p-3 flex items-center gap-2">
-                        <input type="date" value="${itemCal.fechaProgramada}" onchange="actualizarFechaCalendario(${clienteIndex}, this.value)" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50 focus:ring-1 focus:ring-green-500 outline-none">
-                        <button onclick="guardarFilaCalendario(${clienteIndex})" class="bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 rounded text-xs shadow" title="Guardar fecha"><i class="fa-solid fa-floppy-disk"></i></button>
+                        <input type="date" value="${itemCal.fechaProgramada}" onchange="actualizarFechaCalendario('${calendarKey}', this.value)" class="border border-gray-300 rounded px-2 py-1 text-xs bg-gray-50 focus:ring-1 focus:ring-green-500 outline-none">
+                        <button onclick="guardarFilaCalendario('${calendarKey}')" class="bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 rounded text-xs shadow" title="Guardar fecha"><i class="fa-solid fa-floppy-disk"></i></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1281,7 +1313,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('cob-recibo').value = cobro.recibo || '';
                 onCobroClientChange();
             } else {
-                document.getElementById('cob-fecha').value = new Date().toISOString().split('T')[0];
+                document.getElementById('cob-fecha').value = formatLocalDate();
             }
 
             document.getElementById('modal-cobro').classList.remove('hidden');
@@ -1433,13 +1465,13 @@ window.addEventListener('DOMContentLoaded', () => {
             let totalMesActual = 0;
 
             const now = new Date();
-            const currentMonthStr = now.toISOString().slice(0, 7);
+            const currentMonthStr = formatLocalDate(now).slice(0, 7);
 
             const semanas = {};
             appData.cobros.map((cob, i) => ({...cob, originalIndex: i}))
                 .sort((a,b) => new Date(b.fecha) - new Date(a.fecha))
                 .forEach(cob => {
-                    const wKey = getWeekKey(cob.fecha || new Date().toISOString().split('T')[0]);
+                    const wKey = getWeekKey(cob.fecha || formatLocalDate());
                     if(!semanas[wKey]) semanas[wKey] = [];
                     semanas[wKey].push(cob);
 
@@ -1544,7 +1576,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('cmp-precio').value = c.precio !== undefined ? c.precio : '';
                 document.getElementById('cmp-utilidad').value = c.utilidad !== undefined ? c.utilidad : '';
             } else {
-                document.getElementById('cmp-fecha').value = new Date().toISOString().split('T')[0];
+                document.getElementById('cmp-fecha').value = formatLocalDate();
             }
 
             document.getElementById('modal-compra').classList.remove('hidden');
@@ -1557,7 +1589,13 @@ window.addEventListener('DOMContentLoaded', () => {
             let fotoBase64 = idx !== '' ? appData.compras[idx].factura : null;
 
             if (fileInput.files.length > 0) {
-                fotoBase64 = await fileToBase64(fileInput.files[0]);
+                try {
+                    fotoBase64 = await uploadFileToStorage(fileInput.files[0], 'facturas');
+                } catch (error) {
+                    console.error('No se pudo subir el factura.', error);
+                    alert('No se pudo subir el documento. Revisa que Firebase Storage esté habilitado y que sus reglas permitan la carga.');
+                    return;
+                }
             }
 
             const compraData = {
@@ -1588,7 +1626,7 @@ window.addEventListener('DOMContentLoaded', () => {
             let invMes = 0;
             let invAnio = 0;
             const now = new Date();
-            const currM = now.toISOString().slice(0, 7);
+            const currM = formatLocalDate(now).slice(0, 7);
             const currY = now.getFullYear().toString();
 
             appData.compras.forEach((c, i) => {
@@ -1654,7 +1692,22 @@ window.addEventListener('DOMContentLoaded', () => {
         window.onCobroClientChange = onCobroClientChange;
         window.calcNuevoSaldoCobro = calcNuevoSaldoCobro;
         window.openModalCliente = openModalCliente;
-        window.saveCliente = saveCliente
+        window.saveCliente = saveCliente;
+        window.exportarBaseDeDatos = exportarBaseDeDatos;
+        window.importarBaseDeDatos = importarBaseDeDatos;
+        window.exportToExcel = exportToExcel;
+        window.toggleSortOrder = toggleSortOrder;
+        window.toggleSortCalendario = toggleSortCalendario;
+        window.agregarCampoArticulo = agregarCampoArticulo;
+        window.verificarSelectManual = verificarSelectManual;
+        window.cycleEstadoCalendario = cycleEstadoCalendario;
+        window.actualizarObservacionCalendario = actualizarObservacionCalendario;
+        window.actualizarFechaCalendario = actualizarFechaCalendario;
+        window.guardarFilaCalendario = guardarFilaCalendario;
     </script>
 </body>
 </html>
+
+
+
+
