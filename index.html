@@ -675,8 +675,7 @@ async function saveData() {
 window.addEventListener('DOMContentLoaded', () => {
     cargarDatosFirebase();
 });
-        }
-
+        
         function exportarBaseDeDatos() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
             const downloadAnchor = document.createElement('a');
