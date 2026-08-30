@@ -547,7 +547,7 @@
     <script type="module">
  // --- CONEXIÓN FIREBASE & AUTHENTICATION ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -626,32 +626,30 @@ let sortDirection = 'asc';
 let calSortDirection = 'asc';
 
 // Función para cargar los datos desde Firebase al iniciar
-async function cargarDatosFirebase() {
+window.cargarDatosFirebase = async function() {
     try {
-        const docRef = db.collection("comercial_ethan").doc("datos_principales");
-        const doc = await docRef.get();
-        
-        if (doc.exists) {
-            appData = doc.data();
+        const docRef = doc(db, "comercial_ethan", "datos_principales");
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            appData = docSnap.data();
             console.log("Datos cargados desde Firebase con éxito.");
         } else {
             console.log("No hay datos en Firebase, inicializando vacíos...");
-            await saveData(); // Crea el documento vacío si no existe
+            await window.saveData();
         }
-        
-        // Si tienes una función que renderiza o pinta la tabla en tu app, llámala aquí:
+
         if (typeof renderTable === 'function') renderTable();
         if (typeof actualizarVista === 'function') actualizarVista();
-        
+
     } catch (error) {
         console.error("Error al cargar desde Firebase:", error);
-        // Fallback a localStorage por si falla el internet momentáneamente
         appData.clientes = JSON.parse(localStorage.getItem('ethan_clientes')) || [];
         appData.cobros = JSON.parse(localStorage.getItem('ethan_cobros')) || [];
         appData.compras = JSON.parse(localStorage.getItem('ethan_compras')) || [];
         appData.calendario = JSON.parse(localStorage.getItem('ethan_calendario')) || {};
     }
-}
+};
 
 // Función para guardar los datos tanto en la nube como en respaldo local
 async function saveData() {
