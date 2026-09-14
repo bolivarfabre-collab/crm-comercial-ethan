@@ -54,14 +54,12 @@
     
     <!-- BARRA LATERAL VERTICAL (SIDEBAR) -->
     <aside id="sidebar" class="bg-gray-900 text-white w-64 flex flex-col h-full shadow-2xl fixed xl:relative z-40 transform -translate-x-full xl:translate-x-0">
-        <div class="p-5 border-b border-gray-800 flex items-center justify-between">
-         <div class="flex items-center">
-            <img src="logo.png" alt="Comercial Ethan" class="h-10 max-w-[150px] object-contain bg-white rounded-md p-1">
-        </div>
-            <button onclick="toggleSidebar()" class="xl:hidden text-gray-400 hover:text-white"
-                <i class="fa-solid fa-times text-xl"></i>
-            </button>
-        </div>
+          <div class="w-full h-16 p-2 flex items-center justify-between border-b border-gray-800 relative bg-gray-900">
+              <img src="logo.png" alt="Comercial Ethan" class="w-full h-full object-contain">
+              <button onclick="toggleSidebar()" class="xl:hidden text-gray-400 hover:text-white absolute right-3 top-1/2 -translate-y-1/2 bg-gray-900/80 p-1 rounded-md">
+                  <i class="fa-solid fa-times text-xl"></i>
+              </button>
+          </div>
 
         <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-1" id="nav-tabs">
             <button onclick="switchTab('clientes')" id="tab-btn-clientes" class="nav-btn w-full text-left px-6 py-3 font-medium text-sm flex items-center gap-3 transition-colors border-l-4 bg-gray-800 text-white border-green-500">
@@ -164,45 +162,57 @@
                     </div>
                 </section>
 
-                <!-- 2. PESTAÑA CLIENTES ACTIVOS -->
-                <section id="sec-activos" class="tab-content hidden space-y-4">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-                        <h2 class="text-2xl font-bold text-gray-800">Clientes Activos (Con Saldo)</h2>
-                        <button onclick="openModalCliente()" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl font-bold shadow-sm flex items-center justify-center gap-2 transition-colors text-sm">
-                            <i class="fa-solid fa-user-plus text-base"></i> Registrar Nuevo Cliente Activo
-                        </button>
-                    </div>
+  
+<!-- 2. PESTAÑA CLIENTES ACTIVOS -->
+<section id="sec-activos" class="tab-content hidden space-y-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+        <h2 class="text-2xl font-bold text-gray-800">Clientes Activos (Con Saldo)</h2>
+        <button onclick="openModalCliente()" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl font-bold shadow-sm flex items-center justify-center gap-2 transition-colors text-sm">
+            <i class="fa-solid fa-user-plus text-base"></i> Registrar Nuevo Cliente Activo
+        </button>
+    </div>
 
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap justify-between items-center gap-4">
-                        <div class="relative flex-1 min-w-[280px]">
-                            <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
-                            <input type="text" id="search-activos" oninput="renderClientesActivos()" placeholder="Buscar cliente activo..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm bg-gray-50">
-                        </div>
-                        <button onclick="exportToExcel('activos')" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm">
-                            <i class="fa-solid fa-file-excel"></i> Exportar Activos
-                        </button>
-                    </div>
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap justify-between items-center gap-4">
+        <div class="relative flex-1 min-w-[280px]">
+            <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
+            <input type="text" id="search-activos" oninput="renderClientesActivos()" placeholder="Buscar cliente activo..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm bg-gray-50">
+        </div>
+        <button onclick="exportToExcel('activos')" class="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm">
+            <i class="fa-solid fa-file-excel"></i> Exportar Activos
+        </button>
+    </div>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-                        <table class="w-full text-left border-collapse text-xs md:text-sm whitespace-nowrap">
-                            <thead>
-                                <tr class="bg-gray-100 border-b text-gray-600 uppercase font-semibold text-[11px] tracking-wider">
-                                    <th class="p-3">ID Venta</th>
-                                    <th class="p-3">Nombre</th>
-                                    <th class="p-3">Dirección</th>
-                                    <th class="p-3">Teléfono</th>
-                                    <th class="p-3">Fecha de Venta</th>
-                                    <th class="p-3">Saldo</th>
-                                    <th class="p-3">Último Pago</th>
-                                    <th class="p-3 text-center">Tipo Cliente</th>
-                                    <th class="p-3 text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody-activos" class="divide-y divide-gray-100"></tbody>
-                        </table>
-                    </div>
-                </section>
+    <!-- BARRA INFORMATIVA AZUL (RESUMEN) -->
+    <div class="bg-blue-600 text-white py-1.5 px-4 rounded-lg shadow-sm flex flex-col sm:flex-row justify-between items-center gap-2 font-medium text-xs md:text-sm">
+          <div class="flex items-center gap-2">
+              <i class="fa-solid fa-users text-blue-200 text-sm"></i>
+              <span>Clientes activos: <strong id="resumen-cant-activos" class="text-white font-bold">0</strong></span>
+          </div>
+          <div class="flex items-center gap-2">
+              <i class="fa-solid fa-sack-dollar text-amber-300 text-sm"></i>
+              <span>Saldo total por cobrar: <strong id="resumen-saldo-total" class="text-amber-300 font-extrabold text-sm md:text-base">$0.00</strong></span>
+          </div>
+      </div>
 
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs md:text-sm whitespace-nowrap">
+            <thead>
+                <tr class="bg-gray-100 border-b text-gray-600 uppercase font-semibold text-[11px] tracking-wider">
+                    <th class="p-3">ID Venta</th>
+                    <th class="p-3">Nombre</th>
+                    <th class="p-3">Dirección</th>
+                    <th class="p-3">Teléfono</th>
+                    <th class="p-3">Fecha de Venta</th>
+                    <th class="p-3">Saldo</th>
+                    <th class="p-3">Último Pago</th>
+                    <th class="p-3 text-center">Tipo Cliente</th>
+                    <th class="p-3 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-activos" class="divide-y divide-gray-100"></tbody>
+        </table>
+    </div>
+</section>
                 <!-- 3. PESTAÑA COBROS -->
                 <section id="sec-cobros" class="tab-content hidden space-y-6">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
@@ -1032,48 +1042,64 @@ window.toggleSidebar = function() {
             });
         }
 
-        function renderClientesActivos() {
-            const search = document.getElementById('search-activos').value.toLowerCase();
-            const tbody = document.getElementById('tbody-activos');
-            tbody.innerHTML = '';
+function renderClientesActivos() {
+    const search = document.getElementById('search-activos').value.toLowerCase();
+    const tbody = document.getElementById('tbody-activos');
+    tbody.innerHTML = '';
 
-            const activos = appData.clientes
-                .map((c, i) => ({...c, originalIndex: i}))
-                .filter(c => c.estado === 'Activo');
+    const activos = appData.clientes
+        .map((c, i) => ({...c, originalIndex: i}))
+        .filter(c => c.estado === 'Activo');
 
-            activos.forEach(c => {
-                const nombreVal = c.nombre || '';
-                const cedulaVal = c.cedula || '';
-                if (nombreVal.toLowerCase().includes(search) || cedulaVal.toLowerCase().includes(search)) {
-                    const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-blue-50 border-b transition-colors';
-                    
-                    const semaforoBg = c.semaforo === 'Rojo' ? 'bg-red-500' : c.semaforo === 'Amarillo' ? 'bg-yellow-400' : 'bg-green-500';
-                    const semaforoText = c.semaforo === 'Rojo' ? 'Moroso' : c.semaforo === 'Amarillo' ? 'Regular' : 'Excelente';
+    // Variables para acumular los totales
+    let cantClientes = 0;
+    let totalSaldo = 0;
 
-                    tr.innerHTML = `
-                        <td class="p-3 font-bold text-gray-600">${c.idVenta || '-'}</td>
-                        <td class="p-3 font-bold text-gray-900">${c.nombre || '-'}</td>
-                        <td class="p-3 truncate max-w-[150px] text-gray-600" title="${c.direccion || ''}">${c.direccion || '-'}</td>
-                        <td class="p-3 text-gray-600">${c.tel1 || '-'} ${c.tel2 ? '/ ' + c.tel2 : ''}</td>
-                        <td class="p-3 text-gray-500">${c.fecha || '-'}</td>
-                        <td class="p-3 font-bold text-red-600 text-lg">$${(c.saldo || 0).toFixed(2)}</td>
-                        <td class="p-3 font-semibold text-blue-700">${c.ultimoPago || 'Sin abonos'}</td>
-                        <td class="p-3 text-center cursor-pointer hover:bg-gray-100 rounded-lg transition-colors" onclick="cycleSemaforo(${c.originalIndex})" title="Clic para cambiar Tipo Cliente">
-                            <div class="flex flex-col items-center justify-center gap-1">
-                                <div class="w-4 h-4 rounded-full ${semaforoBg} shadow-inner border border-black/10"></div>
-                                <span class="text-[10px] font-bold text-gray-500 uppercase">${semaforoText}</span>
-                            </div>
-                        </td>
-                        <td class="p-3 text-center space-x-3">
-                            <button onclick="openModalCliente(${c.originalIndex})" class="text-blue-500 hover:text-blue-800 bg-blue-50 p-1.5 rounded" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                            <button onclick="deleteCliente(${c.originalIndex})" class="text-red-500 hover:text-red-800 bg-red-50 p-1.5 rounded" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                }
-            });
+    activos.forEach(c => {
+        const nombreVal = c.nombre || '';
+        const cedulaVal = c.cedula || '';
+        if (nombreVal.toLowerCase().includes(search) || cedulaVal.toLowerCase().includes(search)) {
+            
+            // Acumulamos los datos de los clientes filtrados
+            cantClientes++;
+            totalSaldo += parseFloat(c.saldo) || 0;
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-blue-50 border-b transition-colors';
+            
+            const semaforoBg = c.semaforo === 'Rojo' ? 'bg-red-500' : c.semaforo === 'Amarillo' ? 'bg-yellow-400' : 'bg-green-500';
+            const semaforoText = c.semaforo === 'Rojo' ? 'Moroso' : c.semaforo === 'Amarillo' ? 'Regular' : 'Excelente';
+
+            tr.innerHTML = `
+                <td class="p-3 font-bold text-gray-600">${c.idVenta || '-'}</td>
+                <td class="p-3 font-bold text-gray-900">${c.nombre || '-'}</td>
+                <td class="p-3 truncate max-w-[150px] text-gray-600" title="${c.direccion || ''}">${c.direccion || '-'}</td>
+                <td class="p-3 text-gray-600">${c.tel1 || '-'} ${c.tel2 ? '/ ' + c.tel2 : ''}</td>
+                <td class="p-3 text-gray-500">${c.fecha || '-'}</td>
+                <td class="p-3 font-bold text-red-600 text-lg">$${(c.saldo || 0).toFixed(2)}</td>
+                <td class="p-3 font-semibold text-blue-700">${c.ultimoPago || 'Sin abonos'}</td>
+                <td class="p-3 text-center cursor-pointer hover:bg-gray-100 rounded-lg transition-colors" onclick="cycleSemaforo(${c.originalIndex})" title="Clic para cambiar Tipo Cliente">
+                    <div class="flex flex-col items-center justify-center gap-1">
+                        <div class="w-4 h-4 rounded-full ${semaforoBg} shadow-inner border border-black/10"></div>
+                        <span class="text-[10px] font-bold text-gray-500 uppercase">${semaforoText}</span>
+                    </div>
+                </td>
+                <td class="p-3 text-center space-x-3">
+                    <button onclick="openModalCliente(${c.originalIndex})" class="text-blue-500 hover:text-blue-800 bg-blue-50 p-1.5 rounded" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                    <button onclick="deleteCliente(${c.originalIndex})" class="text-red-500 hover:text-red-800 bg-red-50 p-1.5 rounded" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
         }
+    });
+
+    // Actualizamos los valores en la barra azul en pantalla
+    const elCant = document.getElementById('resumen-cant-activos');
+    const elSaldo = document.getElementById('resumen-saldo-total');
+
+    if (elCant) elCant.textContent = cantClientes;
+    if (elSaldo) elSaldo.textContent = `$${totalSaldo.toFixed(2)}`;
+}
 
         function toggleEstado(index) {
             appData.clientes[index].estado = appData.clientes[index].estado === 'Activo' ? 'Inactivo' : 'Activo';
