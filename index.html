@@ -411,9 +411,25 @@
                             <option value="Inactivo">Inactivo (Solo Histórico)</option>
                         </select>
                     </div>
-                    <div class="sm:col-span-2">
-                        <label class="block font-semibold text-gray-700">Imagen de Contrato o Cédula</label>
-                        <input type="file" id="cli-foto" accept="image/*" class="w-full border border-gray-300 bg-gray-50 p-2 rounded-lg mt-1 cursor-pointer">
+                    <div class="sm:col-span-2 rounded-xl border border-blue-100 bg-blue-50/50 p-3 space-y-3">
+                        <div>
+                            <p class="font-semibold text-gray-700">Documentos locales del cliente</p>
+                            <p class="text-[11px] text-gray-500 mt-1">Se guardan solo en <strong>Documentos\\Comercial Ethan IMG\\ID de venta</strong>. En el primer guardado, Chrome solicitará seleccionar la carpeta Documentos.</p>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700">Cédula frontal</label>
+                                <input type="file" id="cli-cedula-frontal" accept="image/*" class="w-full border border-gray-300 bg-white p-2 rounded-lg mt-1 cursor-pointer text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700">Cédula posterior</label>
+                                <input type="file" id="cli-cedula-posterior" accept="image/*" class="w-full border border-gray-300 bg-white p-2 rounded-lg mt-1 cursor-pointer text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700">Contrato</label>
+                                <input type="file" id="cli-contrato" accept="image/*" class="w-full border border-gray-300 bg-white p-2 rounded-lg mt-1 cursor-pointer text-xs">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 pt-4 border-t mt-4">
@@ -497,9 +513,9 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block font-semibold text-gray-700">Imagen de Factura</label>
+                    <label class="block font-semibold text-gray-700">Comprobante inicial (opcional)</label>
                     <input type="file" id="cmp-foto" accept="image/*" class="w-full border border-gray-300 bg-gray-50 p-2 rounded-lg mt-1 cursor-pointer">
-                    <p class="text-[11px] text-gray-500 mt-1" id="cmp-foto-hint">Sube la foto para verla o descargarla después.</p>
+                    <p class="text-[11px] text-gray-500 mt-1" id="cmp-foto-hint">Se guarda localmente. También podrá agregar o reemplazar el comprobante desde Acciones.</p>
                 </div>
                 <div class="flex justify-end gap-3 pt-4 border-t mt-4">
                     <button type="button" onclick="closeModal('modal-compra')" class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-800 font-semibold transition-colors">Cancelar</button>
@@ -509,6 +525,8 @@
         </div>
     </div>
 
+    <input type="file" id="input-comprobante-compra" accept="image/*" class="hidden" onchange="cargarComprobanteCompra(event)">
+
     <!-- Modal Ver Detalle / Imagen del Cliente -->
     <div id="modal-ver-cliente" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl relative text-sm space-y-4">
@@ -516,10 +534,33 @@
             <h3 class="text-lg font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><i class="fa-solid fa-address-card text-blue-600"></i> <span id="vcli-nombre"></span></h3>
             <div id="vcli-info" class="grid grid-cols-2 gap-y-3 gap-x-4 text-gray-700"></div>
             <div class="mt-4 pt-4 border-t">
-                <h4 class="font-bold text-gray-800 mb-2">Documento / Cédula / Contrato:</h4>
-                <div id="vcli-imagen-container" class="bg-gray-50 rounded-xl p-2 text-center min-h-[150px] border border-dashed border-gray-300 flex items-center justify-center">
-                    <span class="text-gray-400">Sin documento adjunto</span>
+                <h4 class="font-bold text-gray-800 mb-2">Documentos locales:</h4>
+                <div id="vcli-documentos-list" class="grid grid-cols-1 sm:grid-cols-3 gap-2"></div>
+                <div id="vcli-imagen-container" class="bg-gray-50 rounded-xl p-2 text-center min-h-[150px] border border-dashed border-gray-300 flex items-center justify-center mt-3">
+                    <span class="text-gray-400">Selecciona un documento para visualizarlo</span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial de Pagos del Cliente -->
+    <div id="modal-historial-pagos" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+            <button onclick="closeModal('modal-historial-pagos')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl font-bold">&times;</button>
+            <h3 class="text-xl font-bold text-gray-800 border-b pb-2 pr-8"><i class="fa-solid fa-clock-rotate-left text-blue-600 mr-2"></i>Historial de pagos: <span id="historial-cliente-nombre"></span></h3>
+            <p id="historial-cliente-resumen" class="text-sm text-gray-500 mt-3"></p>
+            <div class="overflow-x-auto mt-4 border border-gray-200 rounded-xl">
+                <table class="w-full text-sm text-left whitespace-nowrap">
+                    <thead class="bg-gray-900 text-white uppercase text-[11px] tracking-wider">
+                        <tr>
+                            <th class="p-3">Fecha</th>
+                            <th class="p-3">Valor pagado</th>
+                            <th class="p-3">Saldo restante</th>
+                            <th class="p-3">No. recibo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-historial-pagos" class="divide-y divide-gray-100"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -539,7 +580,6 @@
 // --- CONEXIÓN FIREBASE & AUTENTICACIÓN ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -554,7 +594,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const storage = getStorage(app);
 const dataRef = doc(db, "comercial_ethan", "datos_principales");
 
 const emptyData = () => ({ clientes: [], cobros: [], compras: [], calendario: {} });
@@ -564,6 +603,13 @@ let calSortDirection = 'asc';
 let unsubscribeData = null;
 let writeQueue = Promise.resolve();
 let isLoadingData = false;
+const CLIENT_DOCUMENTS_ROOT = 'Comercial Ethan IMG';
+const PURCHASE_DOCUMENTS_ROOT = 'Comercial Ethan Facturas';
+const LOCAL_FOLDER_DB = 'comercial_ethan_local_folders';
+const LOCAL_FOLDER_STORE = 'handles';
+const LOCAL_DOCUMENTS_PARENT_KEY = 'documents-parent';
+let documentsParentHandle = null;
+let activeObjectUrl = null;
 
 function formatLocalDate(date = new Date()) {
     const year = date.getFullYear();
@@ -575,6 +621,172 @@ function formatLocalDate(date = new Date()) {
 function createClientKey() {
     return window.crypto?.randomUUID?.() || `cliente_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
+
+function openLocalFolderDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(LOCAL_FOLDER_DB, 1);
+        request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains(LOCAL_FOLDER_STORE)) {
+                request.result.createObjectStore(LOCAL_FOLDER_STORE);
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function readLocalFolderHandle(key) {
+    const database = await openLocalFolderDatabase();
+    return new Promise((resolve, reject) => {
+        const request = database.transaction(LOCAL_FOLDER_STORE, 'readonly').objectStore(LOCAL_FOLDER_STORE).get(key);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+    }).finally(() => database.close());
+}
+
+async function saveLocalFolderHandle(key, handle) {
+    const database = await openLocalFolderDatabase();
+    return new Promise((resolve, reject) => {
+        const request = database.transaction(LOCAL_FOLDER_STORE, 'readwrite').objectStore(LOCAL_FOLDER_STORE).put(handle, key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    }).finally(() => database.close());
+}
+
+async function hasDirectoryPermission(handle, mode = 'readwrite') {
+    if (!handle) return false;
+    const options = { mode };
+    if ((await handle.queryPermission(options)) === 'granted') return true;
+    return (await handle.requestPermission(options)) === 'granted';
+}
+
+async function getDocumentsParentHandle(requestAccess = false) {
+    if (!('showDirectoryPicker' in window)) {
+        throw new Error('Este navegador no permite guardar archivos en carpetas locales. Abre el CRM en Google Chrome para Windows.');
+    }
+
+    if (!documentsParentHandle && !requestAccess) return null;
+
+    if (!documentsParentHandle && requestAccess) {
+        documentsParentHandle = await window.showDirectoryPicker({
+            id: 'comercial-ethan-documents',
+            mode: 'readwrite',
+            startIn: 'documents'
+        });
+        saveLocalFolderHandle(LOCAL_DOCUMENTS_PARENT_KEY, documentsParentHandle).catch(error => {
+            console.warn('No se pudo recordar la carpeta local seleccionada.', error);
+        });
+    }
+
+    if (!documentsParentHandle) return null;
+    if (requestAccess && !(await hasDirectoryPermission(documentsParentHandle))) {
+        throw new Error('No se concedió permiso para usar la carpeta Documentos.');
+    }
+    return documentsParentHandle;
+}
+
+async function getLocalDocumentRoot(rootName, requestAccess = false) {
+    const parent = await getDocumentsParentHandle(requestAccess);
+    if (!parent) return null;
+    try {
+        return await parent.getDirectoryHandle(rootName, { create: requestAccess });
+    } catch (error) {
+        if (error.name === 'NotFoundError') return null;
+        throw error;
+    }
+}
+
+function safeLocalFolderName(value) {
+    return String(value || '').trim().replace(/[<>:"/\\|?*]/g, '_').replace(/^\.+$/, '');
+}
+
+function fileExtension(file) {
+    const match = String(file?.name || '').match(/\.([a-z0-9]{1,10})$/i);
+    if (match) return `.${match[1].toLowerCase()}`;
+    return file?.type === 'image/png' ? '.png' : '.jpg';
+}
+
+async function replaceLocalImage(directory, basename, file) {
+    if (!file?.type?.startsWith('image/')) {
+        throw new Error('Selecciona una imagen válida para el documento.');
+    }
+    for await (const [name, entry] of directory.entries()) {
+        if (entry.kind === 'file' && name.startsWith(`${basename}.`)) {
+            await directory.removeEntry(name);
+        }
+    }
+    const filename = `${basename}${fileExtension(file)}`;
+    const fileHandle = await directory.getFileHandle(filename, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(file);
+    await writable.close();
+    return filename;
+}
+
+async function findLocalImage(directory, basename) {
+    if (!directory) return null;
+    for await (const [name, entry] of directory.entries()) {
+        if (entry.kind === 'file' && name.startsWith(`${basename}.`)) {
+            return { name, file: await entry.getFile() };
+        }
+    }
+    return null;
+}
+
+async function getClientDocumentsDirectory(clientId, requestAccess = false) {
+    const folderName = safeLocalFolderName(clientId);
+    if (!folderName) throw new Error('Ingresa el ID de venta para crear la carpeta local del cliente.');
+    const root = await getLocalDocumentRoot(CLIENT_DOCUMENTS_ROOT, requestAccess);
+    if (!root) return null;
+    try {
+        return await root.getDirectoryHandle(folderName, { create: requestAccess });
+    } catch (error) {
+        if (error.name === 'NotFoundError') return null;
+        throw error;
+    }
+}
+
+async function guardarDocumentosCliente(idVenta, files) {
+    const directory = await getClientDocumentsDirectory(idVenta, true);
+    for (const [name, file] of Object.entries(files)) {
+        if (file) await replaceLocalImage(directory, name, file);
+    }
+}
+
+async function getCompraDocumentDirectory(requestAccess = false) {
+    return getLocalDocumentRoot(PURCHASE_DOCUMENTS_ROOT, requestAccess);
+}
+
+async function guardarComprobanteCompraLocal(documentId, file) {
+    const directory = await getCompraDocumentDirectory(true);
+    await replaceLocalImage(directory, `compra_${documentId}`, file);
+}
+
+async function findComprobanteCompraLocal(documentId, requestAccess = false) {
+    if (!documentId) return null;
+    const directory = await getCompraDocumentDirectory(requestAccess);
+    return findLocalImage(directory, `compra_${documentId}`);
+}
+
+function setClientDocumentPreview(file) {
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = URL.createObjectURL(file);
+    document.getElementById('vcli-imagen-container').innerHTML = `
+        <div class="w-full">
+            <img src="${activeObjectUrl}" alt="Documento local" class="max-h-64 mx-auto rounded shadow-md border border-gray-200">
+            <a href="${activeObjectUrl}" download="${file.name}" class="inline-flex mt-3 text-sm font-bold text-blue-600 hover:underline"><i class="fa-solid fa-download mr-1"></i> Descargar documento</a>
+        </div>`;
+}
+
+async function restoreDocumentsFolderHandle() {
+    try {
+        documentsParentHandle = await readLocalFolderHandle(LOCAL_DOCUMENTS_PARENT_KEY);
+    } catch (error) {
+        console.warn('No se pudo restaurar la carpeta local configurada.', error);
+    }
+}
+
+restoreDocumentsFolderHandle();
 
 function safeParseLocal(key, fallback) {
     try {
@@ -805,14 +1017,10 @@ window.toggleSidebar = function() {
 
         function closeModal(id) {
             document.getElementById(id).classList.add('hidden');
-        }
-
-        async function uploadFileToStorage(file, folder) {
-            if (!file) return null;
-            const cleanName = (file.name || 'archivo').replace(/[^a-zA-Z0-9._-]/g, '_');
-            const fileRef = ref(storage, `${folder}/${Date.now()}_${createClientKey()}_${cleanName}`);
-            await uploadBytes(fileRef, file, { contentType: file.type || 'application/octet-stream' });
-            return getDownloadURL(fileRef);
+            if ((id === 'modal-ver-cliente' || id === 'modal-ver-factura') && activeObjectUrl) {
+                URL.revokeObjectURL(activeObjectUrl);
+                activeObjectUrl = null;
+            }
         }
 
         // ==========================================
@@ -918,17 +1126,30 @@ window.toggleSidebar = function() {
         async function saveCliente(e) {
             e.preventDefault();
             const idx = document.getElementById('cli-index').value;
-            const fileInput = document.getElementById('cli-foto');
-            let fotoBase64 = idx !== '' ? appData.clientes[idx].foto : null;
+            const idVenta = document.getElementById('cli-idventa').value.trim();
+            const archivosLocales = {
+                cedula_frontal: document.getElementById('cli-cedula-frontal').files[0],
+                cedula_posterior: document.getElementById('cli-cedula-posterior').files[0],
+                contrato: document.getElementById('cli-contrato').files[0]
+            };
+            const tieneArchivosLocales = Object.values(archivosLocales).some(Boolean);
 
-            if (fileInput.files.length > 0) {
-                try {
-                    fotoBase64 = await uploadFileToStorage(fileInput.files[0], 'clientes');
-                } catch (error) {
-                    console.error('No se pudo subir el documento del cliente.', error);
-                    alert('No se pudo subir el documento. Revisa que Firebase Storage esté habilitado y que sus reglas permitan la carga.');
-                    return;
+            if (idx === '' && !idVenta) {
+                alert('Ingresa el ID de venta. Ese número se usará para crear la carpeta local del cliente.');
+                return;
+            }
+
+            try {
+                // Cada cliente nuevo obtiene su carpeta aunque todavía no se adjunten imágenes.
+                if (idx === '' || tieneArchivosLocales) {
+                    await guardarDocumentosCliente(idVenta, archivosLocales);
                 }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('No se pudo guardar el documento local del cliente.', error);
+                    alert(error.message || 'No se pudieron guardar los documentos locales del cliente.');
+                }
+                return;
             }
 
             const articleRows = document.querySelectorAll('.article-row');
@@ -945,7 +1166,7 @@ window.toggleSidebar = function() {
             const articuloFinal = listaArticulos.length > 0 ? listaArticulos.join(', ') : 'Sin especificar';
 
             const clienteData = {
-                idVenta: document.getElementById('cli-idventa').value,
+                idVenta,
                 fecha: document.getElementById('cli-fecha').value,
                 nombre: document.getElementById('cli-nombre').value,
                 cedula: document.getElementById('cli-cedula').value,
@@ -960,7 +1181,9 @@ window.toggleSidebar = function() {
                 vendedor: document.getElementById('cli-vendedor').value,
                 estado: document.getElementById('cli-estado').value,
                 semaforo: idx !== '' ? (appData.clientes[idx].semaforo || 'Verde') : 'Verde',
-                foto: fotoBase64,
+                // Se conserva la referencia antigua solo para no perder documentos ya existentes.
+                // Los documentos nuevos no se envían a Firebase ni se guardan en Firestore.
+                foto: idx !== '' ? (appData.clientes[idx].foto || null) : null,
                 _calendarKey: idx !== '' ? appData.clientes[idx]._calendarKey : createClientKey()
             };
 
@@ -1072,7 +1295,11 @@ function renderClientesActivos() {
 
             tr.innerHTML = `
                 <td class="p-3 font-bold text-gray-600">${c.idVenta || '-'}</td>
-                <td class="p-3 font-bold text-gray-900">${c.nombre || '-'}</td>
+                <td class="p-3">
+                    <button onclick="openPaymentHistory(${c.originalIndex})" class="font-bold text-gray-900 hover:text-blue-600 hover:underline text-left" title="Ver historial de pagos">
+                        ${c.nombre || '-'}
+                    </button>
+                </td>
                 <td class="p-3 truncate max-w-[150px] text-gray-600" title="${c.direccion || ''}">${c.direccion || '-'}</td>
                 <td class="p-3 text-gray-600">${c.tel1 || '-'} ${c.tel2 ? '/ ' + c.tel2 : ''}</td>
                 <td class="p-3 text-gray-500">${c.fecha || '-'}</td>
@@ -1128,8 +1355,80 @@ function renderClientesActivos() {
             }
         }
 
+        async function renderClientDocumentList(cliente) {
+            const list = document.getElementById('vcli-documentos-list');
+            const preview = document.getElementById('vcli-imagen-container');
+            const documents = [
+                { key: 'cedula_frontal', label: 'Cédula frontal', icon: 'fa-id-card' },
+                { key: 'cedula_posterior', label: 'Cédula posterior', icon: 'fa-id-card' },
+                { key: 'contrato', label: 'Contrato', icon: 'fa-file-signature' }
+            ];
+            list.innerHTML = '<span class="text-xs text-gray-400 col-span-full">Verificando documentos locales...</span>';
+            preview.innerHTML = '<span class="text-gray-400">Selecciona un documento para visualizarlo</span>';
+
+            try {
+                const directory = await getClientDocumentsDirectory(cliente.idVenta, false);
+                if (!directory) {
+                    list.innerHTML = '<span class="text-xs text-gray-500 col-span-full">La carpeta local aún no está configurada en este navegador.</span>';
+                    return;
+                }
+                const availability = await Promise.all(documents.map(async document => ({
+                    ...document,
+                    found: Boolean(await findLocalImage(directory, document.key))
+                })));
+                list.innerHTML = availability.map(document => `
+                    <button type="button" onclick="verDocumentoCliente('${String(cliente.idVenta).replace(/'/g, "\\'")}', '${document.key}')" class="text-left border rounded-lg p-2 transition-colors ${document.found ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100' : 'bg-gray-50 border-gray-200 text-gray-400'}">
+                        <i class="fa-solid ${document.icon} mr-1"></i> ${document.label}
+                        <span class="block text-[10px] mt-1 font-semibold">${document.found ? 'Ver documento' : 'Sin archivo'}</span>
+                    </button>`).join('');
+                if (!availability.some(document => document.found) && cliente.foto) {
+                    preview.innerHTML = `<img src="${cliente.foto}" alt="Documento anterior" class="max-h-64 mx-auto rounded shadow-md border border-gray-200">`;
+                }
+            } catch (error) {
+                console.warn('No se pudieron consultar los documentos locales.', error);
+                list.innerHTML = '<span class="text-xs text-red-500 col-span-full">No se pudieron leer los documentos locales.</span>';
+            }
+        }
+
+        async function verDocumentoCliente(idVenta, documentKey) {
+            try {
+                const directory = await getClientDocumentsDirectory(idVenta, true);
+                const document = await findLocalImage(directory, documentKey);
+                if (!document) {
+                    alert('No se encontró este documento en la carpeta local del cliente.');
+                    return;
+                }
+                setClientDocumentPreview(document.file);
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('No se pudo abrir el documento local.', error);
+                    alert(error.message || 'No se pudo abrir el documento local.');
+                }
+            }
+        }
+
+        function openPaymentHistory(index) {
+            const cliente = appData.clientes[index];
+            if (!cliente) return;
+            const payments = appData.cobros
+                .filter(cobro => cobro.cliente === cliente.nombre)
+                .sort((a, b) => new Date(b.fecha || '1970-01-01') - new Date(a.fecha || '1970-01-01'));
+            const body = document.getElementById('tbody-historial-pagos');
+            document.getElementById('historial-cliente-nombre').innerText = cliente.nombre || 'Cliente';
+            document.getElementById('historial-cliente-resumen').innerText = `${payments.length} pago(s) registrado(s) · Saldo actual: $${(cliente.saldo || 0).toFixed(2)}`;
+            body.innerHTML = payments.length ? payments.map(cobro => `
+                <tr class="hover:bg-blue-50/50 transition-colors">
+                    <td class="p-3 text-gray-600 font-medium">${cobro.fecha || '-'}</td>
+                    <td class="p-3 text-green-600 font-black">$${(parseFloat(cobro.pago) || 0).toFixed(2)}</td>
+                    <td class="p-3 text-red-500 font-bold">$${(parseFloat(cobro.saldo) || 0).toFixed(2)}</td>
+                    <td class="p-3"><span class="font-mono text-gray-600 bg-gray-50 rounded px-2 py-1 border">${cobro.recibo || '-'}</span></td>
+                </tr>`).join('') : '<tr><td colspan="4" class="p-8 text-center text-gray-400">Este cliente no tiene pagos registrados.</td></tr>';
+            document.getElementById('modal-historial-pagos').classList.remove('hidden');
+        }
+
         function verClienteDetail(index) {
             const c = appData.clientes[index];
+            if (!c) return;
             document.getElementById('vcli-nombre').innerText = c.nombre || 'Detalle';
             document.getElementById('vcli-info').innerHTML = `
                 <div><span class="text-xs text-gray-500 block uppercase font-bold">ID Venta:</span> <span class="font-semibold text-gray-900">${c.idVenta || '-'}</span></div>
@@ -1139,12 +1438,7 @@ function renderClientesActivos() {
                 <div class="col-span-2"><span class="text-xs text-gray-500 block uppercase font-bold">Dirección:</span> <span class="font-semibold text-gray-900">${c.direccion || '-'}</span></div>
                 <div class="col-span-2 bg-red-50 p-2 rounded border border-red-100"><span class="text-xs text-red-500 block uppercase font-bold">Saldo Actual:</span> <span class="text-red-600 font-bold text-xl">$${(c.saldo || 0).toFixed(2)}</span></div>
             `;
-            const imgCont = document.getElementById('vcli-imagen-container');
-            if (c.foto) {
-                imgCont.innerHTML = `<img src="${c.foto}" class="max-h-64 mx-auto rounded shadow-md border border-gray-200">`;
-            } else {
-                imgCont.innerHTML = `<span class="text-gray-400"><i class="fa-solid fa-image-slash text-2xl block mb-2"></i> Sin documento adjunto</span>`;
-            }
+            renderClientDocumentList(c);
             document.getElementById('modal-ver-cliente').classList.remove('hidden');
         }
 
@@ -1622,7 +1916,7 @@ listaCalendario.sort((a, b) => {
             document.getElementById('form-compra').reset();
             document.getElementById('cmp-index').value = index !== null ? index : '';
             document.getElementById('title-modal-compra').innerText = index !== null ? 'Editar Compra' : 'Registrar Compra / Inventario';
-            document.getElementById('cmp-foto-hint').innerText = index !== null ? 'Sube una imagen solo si deseas reemplazar la factura actual.' : 'Sube la foto para verla o descargarla después.';
+            document.getElementById('cmp-foto-hint').innerText = index !== null ? 'La imagen se guardará solo en la carpeta local Comercial Ethan Facturas.' : 'La imagen se guardará localmente al crear la compra. También podrá agregarla desde Acciones.';
 
             if (index !== null) {
                 const c = appData.compras[index];
@@ -1643,14 +1937,17 @@ listaCalendario.sort((a, b) => {
             e.preventDefault();
             const idx = document.getElementById('cmp-index').value;
             const fileInput = document.getElementById('cmp-foto');
-            let fotoBase64 = idx !== '' ? appData.compras[idx].factura : null;
+            const compraAnterior = idx !== '' ? appData.compras[idx] : null;
+            const documentoLocalId = compraAnterior?.documentoLocalId || createClientKey();
 
             if (fileInput.files.length > 0) {
                 try {
-                    fotoBase64 = await uploadFileToStorage(fileInput.files[0], 'facturas');
+                    await guardarComprobanteCompraLocal(documentoLocalId, fileInput.files[0]);
                 } catch (error) {
-                    console.error('No se pudo subir el factura.', error);
-                    alert('No se pudo subir el documento. Revisa que Firebase Storage esté habilitado y que sus reglas permitan la carga.');
+                    if (error.name !== 'AbortError') {
+                        console.error('No se pudo guardar el comprobante local.', error);
+                        alert(error.message || 'No se pudo guardar el comprobante local.');
+                    }
                     return;
                 }
             }
@@ -1662,7 +1959,10 @@ listaCalendario.sort((a, b) => {
                 valor: parseFloat(document.getElementById('cmp-valor').value || 0),
                 precio: parseFloat(document.getElementById('cmp-precio').value || 0),
                 utilidad: parseFloat(document.getElementById('cmp-utilidad').value || 0),
-                factura: fotoBase64
+                // Mantiene las URL antiguas únicamente para conservar documentos previos.
+                // Los comprobantes nuevos se guardan en el equipo, no en Firebase.
+                factura: compraAnterior?.factura || null,
+                documentoLocalId
             };
 
             if (idx === '') {
@@ -1701,9 +2001,10 @@ listaCalendario.sort((a, b) => {
                     <td class="p-3 text-gray-600">$${(c.precio || 0).toFixed(2)}</td>
                     <td class="p-3 text-green-700 font-bold">$${(c.utilidad || 0).toFixed(2)}</td>
                     <td class="p-3 text-center">
-                        ${c.factura ? `<button onclick="verFactura(${i})" class="text-blue-600 font-semibold hover:underline bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 transition-colors"><i class="fa-solid fa-file-invoice"></i> Ver Doc</button>` : '<span class="text-gray-400 text-[10px] uppercase font-bold bg-gray-100 px-2 py-1 rounded">Sin Doc</span>'}
+                        ${(c.documentoLocalId || c.factura) ? `<button onclick="verFactura(${i})" class="text-blue-600 font-semibold hover:underline bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 transition-colors"><i class="fa-solid fa-file-invoice"></i> Ver Doc</button>` : '<span class="text-gray-400 text-[10px] uppercase font-bold bg-gray-100 px-2 py-1 rounded">Sin Doc</span>'}
                     </td>
                     <td class="p-3 text-center space-x-3">
+                        <button onclick="seleccionarComprobanteCompra(${i})" class="text-emerald-600 hover:text-emerald-800" title="Subir comprobante local"><i class="fa-solid fa-file-arrow-up"></i></button>
                         <button onclick="openModalCompra(${i})" class="text-blue-500 hover:text-blue-800" title="Editar"><i class="fa-solid fa-pen"></i></button>
                         <button onclick="deleteCompra(${i})" class="text-red-500 hover:text-red-800" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                     </td>
@@ -1723,12 +2024,59 @@ listaCalendario.sort((a, b) => {
             }
         }
 
-        function verFactura(index) {
+        function seleccionarComprobanteCompra(index) {
+            const input = document.getElementById('input-comprobante-compra');
+            input.dataset.index = index;
+            input.value = '';
+            input.click();
+        }
+
+        async function cargarComprobanteCompra(event) {
+            const file = event.target.files[0];
+            const index = Number(event.target.dataset.index);
+            if (!file || !Number.isInteger(index) || !appData.compras[index]) return;
             const compra = appData.compras[index];
-            if (compra && compra.factura) {
+            const documentoLocalId = compra.documentoLocalId || createClientKey();
+            try {
+                await guardarComprobanteCompraLocal(documentoLocalId, file);
+                compra.documentoLocalId = documentoLocalId;
+                saveData();
+                renderCompras();
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('No se pudo guardar el comprobante local.', error);
+                    alert(error.message || 'No se pudo guardar el comprobante local.');
+                }
+            } finally {
+                event.target.value = '';
+            }
+        }
+
+        async function verFactura(index) {
+            const compra = appData.compras[index];
+            if (!compra) return;
+            try {
+                const localDocument = await findComprobanteCompraLocal(compra.documentoLocalId, true);
+                if (localDocument) {
+                    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+                    activeObjectUrl = URL.createObjectURL(localDocument.file);
+                    document.getElementById('visor-factura-img').src = activeObjectUrl;
+                    document.getElementById('visor-factura-descargar').href = activeObjectUrl;
+                    document.getElementById('visor-factura-descargar').download = localDocument.name;
+                    document.getElementById('modal-ver-factura').classList.remove('hidden');
+                    return;
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') console.warn('No se pudo leer el comprobante local.', error);
+                if (error.name === 'AbortError') return;
+            }
+            if (compra.factura) {
                 document.getElementById('visor-factura-img').src = compra.factura;
                 document.getElementById('visor-factura-descargar').href = compra.factura;
+                document.getElementById('visor-factura-descargar').download = 'Factura_Comercial_Ethan.jpg';
                 document.getElementById('modal-ver-factura').classList.remove('hidden');
+            } else {
+                alert('No se encontró un comprobante local para esta compra en este equipo.');
             }
         }
 
@@ -1739,11 +2087,15 @@ listaCalendario.sort((a, b) => {
         window.cycleSemaforo = cycleSemaforo;
         window.deleteCliente = deleteCliente;
         window.verClienteDetail = verClienteDetail;
+        window.verDocumentoCliente = verDocumentoCliente;
+        window.openPaymentHistory = openPaymentHistory;
         window.openModalCobro = openModalCobro;
         window.deleteCobro = deleteCobro;
         window.openModalCompra = openModalCompra;
         window.deleteCompra = deleteCompra;
         window.verFactura = verFactura;
+        window.seleccionarComprobanteCompra = seleccionarComprobanteCompra;
+        window.cargarComprobanteCompra = cargarComprobanteCompra;
         window.switchTab = switchTab;
         window.closeModal = closeModal;
         window.saveCobro = saveCobro;
