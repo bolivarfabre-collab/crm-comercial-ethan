@@ -610,6 +610,8 @@ const LOCAL_FOLDER_STORE = 'handles';
 const LOCAL_DOCUMENTS_PARENT_KEY = 'documents-parent';
 let documentsParentHandle = null;
 let activeObjectUrl = null;
+let documentsParentHandleRestored = false;
+let documentsParentHandleRestorePromise = null;
 
 function formatLocalDate(date = new Date()) {
     const year = date.getFullYear();
@@ -638,58 +640,94 @@ function openLocalFolderDatabase() {
 async function readLocalFolderHandle(key) {
     const database = await openLocalFolderDatabase();
     return new Promise((resolve, reject) => {
-        const request = database.transaction(LOCAL_FOLDER_STORE, 'readonly').objectStore(LOCAL_FOLDER_STORE).get(key);
-        request.onsuccess = () => resolve(request.result || null);
+        const transaction = database.transaction(LOCAL_FOLDER_STORE, 'readonly');
+        const request = transaction.objectStore(LOCAL_FOLDER_STORE).get(key);
+        let result = null;
+        request.onsuccess = () => { result = request.result || null; };
         request.onerror = () => reject(request.error);
+        transaction.oncomplete = () => resolve(result);
+        transaction.onerror = () => reject(transaction.error || request.error);
+        transaction.onabort = () => reject(transaction.error || new Error('La lectura de la carpeta local fue cancelada.'));
     }).finally(() => database.close());
 }
 
 async function saveLocalFolderHandle(key, handle) {
     const database = await openLocalFolderDatabase();
     return new Promise((resolve, reject) => {
-        const request = database.transaction(LOCAL_FOLDER_STORE, 'readwrite').objectStore(LOCAL_FOLDER_STORE).put(handle, key);
-        request.onsuccess = () => resolve();
+        const transaction = database.transaction(LOCAL_FOLDER_STORE, 'readwrite');
+        const request = transaction.objectStore(LOCAL_FOLDER_STORE).put(handle, key);
         request.onerror = () => reject(request.error);
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error || request.error);
+        transaction.onabort = () => reject(transaction.error || new Error('No se pudo guardar la carpeta local.'));
     }).finally(() => database.close());
 }
 
-async function hasDirectoryPermission(handle, mode = 'readwrite') {
-    if (!handle) return false;
-    const options = { mode };
-    if ((await handle.queryPermission(options)) === 'granted') return true;
-    return (await handle.requestPermission(options)) === 'granted';
+function normalizeDirectoryOptions(options = {}) {
+    // Compatibilidad con las llamadas antiguas que recibían true/false.
+    if (typeof options === 'boolean') {
+        return { requestPermission: options, create: options, mode: options ? 'readwrite' : 'read' };
+    }
+    return {
+        requestPermission: Boolean(options.requestPermission),
+        create: Boolean(options.create),
+        mode: options.mode || (options.create ? 'readwrite' : 'read')
+    };
 }
 
-async function getDocumentsParentHandle(requestAccess = false) {
+async function getDirectoryPermissionState(handle, mode = 'read') {
+    if (!handle || handle.kind !== 'directory') return 'denied';
+    try {
+        return await handle.queryPermission({ mode });
+    } catch (error) {
+        console.warn('No se pudo consultar el permiso de la carpeta local.', error);
+        return 'denied';
+    }
+}
+
+async function getDocumentsParentHandle(options = {}) {
+    const settings = normalizeDirectoryOptions(options);
     if (!('showDirectoryPicker' in window)) {
         throw new Error('Este navegador no permite guardar archivos en carpetas locales. Abre el CRM en Google Chrome para Windows.');
     }
 
-    if (!documentsParentHandle && !requestAccess) return null;
+    // No se intenta leer la carpeta hasta terminar de restaurar el handle de IndexedDB.
+    // Así se evita que la ventana de documentos falle al abrirse justo después de recargar el CRM.
+    await restoreDocumentsFolderHandle();
 
-    if (!documentsParentHandle && requestAccess) {
+    if (!documentsParentHandle && settings.requestPermission) {
         documentsParentHandle = await window.showDirectoryPicker({
             id: 'comercial-ethan-documents',
             mode: 'readwrite',
             startIn: 'documents'
         });
-        saveLocalFolderHandle(LOCAL_DOCUMENTS_PARENT_KEY, documentsParentHandle).catch(error => {
+        try {
+            await saveLocalFolderHandle(LOCAL_DOCUMENTS_PARENT_KEY, documentsParentHandle);
+        } catch (error) {
+            // La sesión actual sigue funcionando aunque el navegador no pueda conservar el handle.
             console.warn('No se pudo recordar la carpeta local seleccionada.', error);
-        });
+        }
     }
 
     if (!documentsParentHandle) return null;
-    if (requestAccess && !(await hasDirectoryPermission(documentsParentHandle))) {
-        throw new Error('No se concedió permiso para usar la carpeta Documentos.');
+
+    let permission = await getDirectoryPermissionState(documentsParentHandle, settings.mode);
+    if (permission !== 'granted' && settings.requestPermission) {
+        // requestPermission debe ejecutarse dentro de una acción del usuario (guardar o pulsar Ver/Autorizar).
+        permission = await documentsParentHandle.requestPermission({ mode: settings.mode });
+    }
+    if (permission !== 'granted') {
+        return null;
     }
     return documentsParentHandle;
 }
 
-async function getLocalDocumentRoot(rootName, requestAccess = false) {
-    const parent = await getDocumentsParentHandle(requestAccess);
+async function getLocalDocumentRoot(rootName, options = {}) {
+    const settings = normalizeDirectoryOptions(options);
+    const parent = await getDocumentsParentHandle(settings);
     if (!parent) return null;
     try {
-        return await parent.getDirectoryHandle(rootName, { create: requestAccess });
+        return await parent.getDirectoryHandle(rootName, { create: settings.create });
     } catch (error) {
         if (error.name === 'NotFoundError') return null;
         throw error;
@@ -733,13 +771,14 @@ async function findLocalImage(directory, basename) {
     return null;
 }
 
-async function getClientDocumentsDirectory(clientId, requestAccess = false) {
+async function getClientDocumentsDirectory(clientId, options = {}) {
+    const settings = normalizeDirectoryOptions(options);
     const folderName = safeLocalFolderName(clientId);
     if (!folderName) throw new Error('Ingresa el ID de venta para crear la carpeta local del cliente.');
-    const root = await getLocalDocumentRoot(CLIENT_DOCUMENTS_ROOT, requestAccess);
+    const root = await getLocalDocumentRoot(CLIENT_DOCUMENTS_ROOT, settings);
     if (!root) return null;
     try {
-        return await root.getDirectoryHandle(folderName, { create: requestAccess });
+        return await root.getDirectoryHandle(folderName, { create: settings.create });
     } catch (error) {
         if (error.name === 'NotFoundError') return null;
         throw error;
@@ -747,24 +786,26 @@ async function getClientDocumentsDirectory(clientId, requestAccess = false) {
 }
 
 async function guardarDocumentosCliente(idVenta, files) {
-    const directory = await getClientDocumentsDirectory(idVenta, true);
+    const directory = await getClientDocumentsDirectory(idVenta, { requestPermission: true, create: true, mode: 'readwrite' });
+    if (!directory) throw new Error('No se pudo acceder a Documentos\\Comercial Ethan IMG. Selecciona la carpeta Documentos cuando el navegador la solicite.');
     for (const [name, file] of Object.entries(files)) {
         if (file) await replaceLocalImage(directory, name, file);
     }
 }
 
-async function getCompraDocumentDirectory(requestAccess = false) {
-    return getLocalDocumentRoot(PURCHASE_DOCUMENTS_ROOT, requestAccess);
+async function getCompraDocumentDirectory(options = {}) {
+    return getLocalDocumentRoot(PURCHASE_DOCUMENTS_ROOT, options);
 }
 
 async function guardarComprobanteCompraLocal(documentId, file) {
-    const directory = await getCompraDocumentDirectory(true);
+    const directory = await getCompraDocumentDirectory({ requestPermission: true, create: true, mode: 'readwrite' });
+    if (!directory) throw new Error('No se pudo acceder a la carpeta local de comprobantes.');
     await replaceLocalImage(directory, `compra_${documentId}`, file);
 }
 
 async function findComprobanteCompraLocal(documentId, requestAccess = false) {
     if (!documentId) return null;
-    const directory = await getCompraDocumentDirectory(requestAccess);
+    const directory = await getCompraDocumentDirectory({ requestPermission: requestAccess, create: false, mode: 'read' });
     return findLocalImage(directory, `compra_${documentId}`);
 }
 
@@ -779,11 +820,22 @@ function setClientDocumentPreview(file) {
 }
 
 async function restoreDocumentsFolderHandle() {
+    if (documentsParentHandleRestored) return documentsParentHandle;
+    if (documentsParentHandleRestorePromise) return documentsParentHandleRestorePromise;
+
+    documentsParentHandleRestorePromise = (async () => {
     try {
         documentsParentHandle = await readLocalFolderHandle(LOCAL_DOCUMENTS_PARENT_KEY);
+        if (documentsParentHandle?.kind !== 'directory') documentsParentHandle = null;
     } catch (error) {
         console.warn('No se pudo restaurar la carpeta local configurada.', error);
+        documentsParentHandle = null;
+    } finally {
+        documentsParentHandleRestored = true;
     }
+    return documentsParentHandle;
+    })();
+    return documentsParentHandleRestorePromise;
 }
 
 restoreDocumentsFolderHandle();
@@ -1367,9 +1419,14 @@ function renderClientesActivos() {
             preview.innerHTML = '<span class="text-gray-400">Selecciona un documento para visualizarlo</span>';
 
             try {
-                const directory = await getClientDocumentsDirectory(cliente.idVenta, false);
+                const directory = await getClientDocumentsDirectory(cliente.idVenta, { create: false, mode: 'read' });
                 if (!directory) {
-                    list.innerHTML = '<span class="text-xs text-gray-500 col-span-full">La carpeta local aún no está configurada en este navegador.</span>';
+                    const clientId = String(cliente.idVenta || '').replace(/'/g, "\\'");
+                    list.innerHTML = `
+                        <div class="text-xs text-gray-500 col-span-full flex flex-wrap items-center gap-2">
+                            <span>Autoriza la carpeta Documentos para leer los archivos locales.</span>
+                            <button type="button" onclick="autorizarDocumentosCliente('${clientId}')" class="text-blue-600 font-bold hover:underline">Autorizar carpeta</button>
+                        </div>`;
                     return;
                 }
                 const availability = await Promise.all(documents.map(async document => ({
@@ -1390,9 +1447,30 @@ function renderClientesActivos() {
             }
         }
 
+        async function autorizarDocumentosCliente(idVenta) {
+            try {
+                // Esta función se ejecuta al pulsar un botón, por lo que Chrome permite restaurar el permiso.
+                const directory = await getClientDocumentsDirectory(idVenta, { requestPermission: true, create: false, mode: 'read' });
+                if (!directory) {
+                    alert('No se encontró la carpeta Documentos\\Comercial Ethan IMG\\' + idVenta + '. Selecciona la carpeta Documentos cuando el navegador la solicite.');
+                    return;
+                }
+                const cliente = appData.clientes.find(item => String(item.idVenta) === String(idVenta));
+                if (cliente) await renderClientDocumentList(cliente);
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('No se pudo autorizar la carpeta local.', error);
+                    alert(error.message || 'No se pudo autorizar la carpeta Documentos.');
+                }
+            }
+        }
+
         async function verDocumentoCliente(idVenta, documentKey) {
             try {
-                const directory = await getClientDocumentsDirectory(idVenta, true);
+                const directory = await getClientDocumentsDirectory(idVenta, { requestPermission: true, create: false, mode: 'read' });
+                if (!directory) {
+                    throw new Error('No se encontró la carpeta local del cliente. Autoriza o selecciona la carpeta Documentos.');
+                }
                 const document = await findLocalImage(directory, documentKey);
                 if (!document) {
                     alert('No se encontró este documento en la carpeta local del cliente.');
@@ -2088,6 +2166,7 @@ listaCalendario.sort((a, b) => {
         window.deleteCliente = deleteCliente;
         window.verClienteDetail = verClienteDetail;
         window.verDocumentoCliente = verDocumentoCliente;
+        window.autorizarDocumentosCliente = autorizarDocumentosCliente;
         window.openPaymentHistory = openPaymentHistory;
         window.openModalCobro = openModalCobro;
         window.deleteCobro = deleteCobro;
