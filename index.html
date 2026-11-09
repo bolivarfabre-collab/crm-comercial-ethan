@@ -83,6 +83,9 @@
             <button onclick="switchTab('caja')" id="tab-btn-caja" class="nav-btn w-full text-left px-6 py-3 font-medium text-sm flex items-center gap-3 transition-colors border-l-4 border-transparent text-gray-400 hover:bg-gray-800 hover:text-white">
                 <i class="fa-solid fa-vault w-5 text-center"></i> Caja
             </button>
+            <button onclick="switchTab('combustible')" id="tab-btn-combustible" class="nav-btn w-full text-left px-6 py-3 font-medium text-sm flex items-center gap-3 transition-colors border-l-4 border-transparent text-gray-400 hover:bg-gray-800 hover:text-white">
+                <i class="fa-solid fa-gas-pump w-5 text-center"></i> Combustible
+            </button>
         </nav>
 
         <div class="px-4 py-3 border-t border-gray-800 bg-gray-950/40 flex flex-col gap-2">
@@ -157,6 +160,14 @@
                         <article class="bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-2xl p-5 shadow-sm ring-2 ring-emerald-100">
                             <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wider text-white/75">Utilidad estimada 2.0</p><h3 id="dash-utilidad-20" class="text-2xl font-black mt-2">$0.00</h3></div><i class="fa-solid fa-chart-line text-2xl text-white/45"></i></div>
                             <p class="text-xs text-white/75 mt-4">Saldo de ventas desde este mes</p>
+                        </article>
+                        <article class="bg-gradient-to-br from-red-600 to-rose-700 text-white rounded-2xl p-5 shadow-sm">
+                            <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wider text-white/75">Clientes en mora</p><h3 id="dash-mora-monto" class="text-2xl font-black mt-2">$0.00</h3></div><i class="fa-solid fa-triangle-exclamation text-2xl text-white/45"></i></div>
+                            <p class="text-xs text-white/75 mt-4"><span id="dash-mora-cant">0</span> clientes activos con más de 30 días sin abonar</p>
+                        </article>
+                        <article class="bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-2xl p-5 shadow-sm">
+                            <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wider text-white/75">Combustible del mes</p><h3 id="dash-comb-gasto" class="text-2xl font-black mt-2">$0.00</h3></div><i class="fa-solid fa-gas-pump text-2xl text-white/45"></i></div>
+                            <p class="text-xs text-white/75 mt-4"><span id="dash-comb-gal">0.00</span> gal · <span id="dash-comb-km">0</span> km · <span id="dash-comb-ckm">$0.000</span>/km</p>
                         </article>
                     </div>
 
@@ -389,6 +400,41 @@
                 </section>
 
                 <!-- 7. CAJA -->
+                <section id="sec-combustible" class="tab-content hidden space-y-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-gas-pump text-amber-500 mr-2"></i>Combustible</h2>
+                        <p class="text-sm text-gray-500">Registra cada carga. Las listas se arman solas por semana (lunes a domingo).</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
+                            <h3 class="font-bold text-gray-700">Registrar carga</h3>
+                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                <label class="block text-xs font-bold text-gray-600">Fecha<input type="date" id="comb-fecha" class="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 font-normal text-sm"></label>
+                                <label class="block text-xs font-bold text-gray-600">Tipo<select id="comb-tipo" onchange="combAutoPrecio()" class="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 font-normal text-sm"><option value="extra">Extra</option><option value="ecopais">Ecopaís</option><option value="super">Súper</option><option value="diesel">Diésel</option></select></label>
+                                <label class="block text-xs font-bold text-gray-600">Monto cargado ($)<input type="number" step="0.01" min="0" id="comb-monto" oninput="combCalc()" class="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 font-normal text-sm"></label>
+                                <label class="block text-xs font-bold text-gray-600">Precio por galón ($)<input type="number" step="0.01" min="0" id="comb-precio" oninput="combCalc()" class="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 font-normal text-sm"></label>
+                            </div>
+                            <p class="text-xs text-gray-500">Galones aproximados: <b id="comb-galones" class="text-gray-800">0.00</b></p>
+                            <input type="number" min="0" step="1" id="comb-odo" placeholder="Odómetro actual en km (opcional)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                            <input type="text" id="comb-nota" placeholder="Nota (opcional)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                            <button onclick="guardarCargaCombustible()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded-lg shadow-sm">Registrar carga</button>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
+                            <h3 class="font-bold text-gray-700">Precio actual en Ecuador ($/galón)</h3>
+                            <div class="grid grid-cols-2 gap-3 text-xs font-bold text-gray-600">
+                                <label>Extra<input type="number" step="0.01" id="pc-extra" class="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 font-normal text-sm"></label>
+                                <label>Ecopaís<input type="number" step="0.01" id="pc-ecopais" class="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 font-normal text-sm"></label>
+                                <label>Súper (referencial)<input type="number" step="0.01" id="pc-super" class="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 font-normal text-sm"></label>
+                                <label>Diésel Premium<input type="number" step="0.01" id="pc-diesel" class="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 font-normal text-sm"></label>
+                            </div>
+                            <input type="text" id="pc-vigencia" placeholder="Vigencia" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                            <p class="text-[11px] text-gray-400">Los precios cambian el día 12 de cada mes. Desde el 12 de nov. se anunció una baja de $0,05 en Extra, Ecopaís y Diésel: actualiza estos valores ese día.</p>
+                            <button onclick="guardarPreciosCombustible()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 rounded-lg">Guardar precios</button>
+                        </div>
+                    </div>
+                    <div id="comb-semanas" class="space-y-4"></div>
+                </section>
+
                 <section id="sec-caja" class="tab-content hidden space-y-6">
                     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b pb-4">
                         <div>
@@ -692,7 +738,8 @@ const emptyCaja = () => ({
     pichincha: 0,
     pacifico: 0
 });
-const emptyData = () => ({ clientes: [], cobros: [], compras: [], calendario: {}, caja: emptyCaja() });
+const emptyPreciosComb = () => ({ extra: 3.17, ecopais: 3.17, super: 5.42, diesel: 3.11, vigencia: 'Oct 12 – Nov 11, 2026 (Súper: precio referencial)' });
+const emptyData = () => ({ clientes: [], cobros: [], compras: [], calendario: {}, caja: emptyCaja(), combustible: [], combustibleKm: {}, combustiblePrecios: emptyPreciosComb() });
 let appData = emptyData();
 let sortDirection = 'asc';
 let calSortDirection = 'asc';
@@ -952,13 +999,37 @@ function readLocalData() {
         cobros: safeParseLocal('ethan_cobros', []),
         compras: safeParseLocal('ethan_compras', []),
         calendario: safeParseLocal('ethan_calendario', {}),
-        caja: safeParseLocal('ethan_caja', emptyCaja())
+        caja: safeParseLocal('ethan_caja', emptyCaja()),
+        combustible: safeParseLocal('ethan_combustible', []),
+        combustibleKm: safeParseLocal('ethan_combustible_km', {}),
+        combustiblePrecios: safeParseLocal('ethan_combustible_precios', emptyPreciosComb())
     };
 }
 
 function toNumber(value) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
+}
+
+// --- MEJORAS: escape HTML, WhatsApp y días sin pago ---
+function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function diasDesde(fechaStr) {
+    if (!fechaStr) return null;
+    const d = new Date(fechaStr + 'T00:00:00');
+    if (isNaN(d)) return null;
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    return Math.max(0, Math.round((hoy - d) / 86400000));
+}
+function diasSinPago(c) { return diasDesde(c.ultimoPago || c.fecha); }
+const DIAS_MORA = 30;
+function whatsappLink(c) {
+    let tel = String(c.tel1 || '').replace(/\D/g, '');
+    if (!tel) return '';
+    if (tel.startsWith('0')) tel = '593' + tel.slice(1);
+    const msg = `Hola ${c.nombre || ''}, le saludamos de Comercial Ethan. Le recordamos su cuota de $${toNumber(c.cuota).toFixed(2)}. Su saldo pendiente es $${toNumber(c.saldo).toFixed(2)}. Gracias.`;
+    return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
 }
 
 function normalizeAppData(rawData = emptyData()) {
@@ -985,7 +1056,10 @@ function normalizeAppData(rawData = emptyData()) {
         cobros: Array.isArray(raw.cobros) ? raw.cobros : [],
         compras: Array.isArray(raw.compras) ? raw.compras : [],
         calendario,
-        caja
+        caja,
+        combustible: Array.isArray(raw.combustible) ? raw.combustible : [],
+        combustibleKm: raw.combustibleKm && typeof raw.combustibleKm === 'object' ? raw.combustibleKm : {},
+        combustiblePrecios: { ...emptyPreciosComb(), ...(raw.combustiblePrecios || {}) }
     };
 }
 
@@ -995,6 +1069,9 @@ function persistLocalData() {
     localStorage.setItem('ethan_compras', JSON.stringify(appData.compras));
     localStorage.setItem('ethan_calendario', JSON.stringify(appData.calendario));
     localStorage.setItem('ethan_caja', JSON.stringify(appData.caja));
+    localStorage.setItem('ethan_combustible', JSON.stringify(appData.combustible));
+    localStorage.setItem('ethan_combustible_km', JSON.stringify(appData.combustibleKm));
+    localStorage.setItem('ethan_combustible_precios', JSON.stringify(appData.combustiblePrecios));
 }
 
 function renderAll() {
@@ -1005,7 +1082,107 @@ function renderAll() {
     renderCompras();
     renderDashboard();
     renderCaja();
+    renderCombustible();
 }
+
+
+// ==========================================
+// COMBUSTIBLE (listas semanales Lunes–Domingo)
+// ==========================================
+function combMondayKey(dateStr) {
+    const [y, m, d] = String(dateStr).split('-').map(Number);
+    return formatLocalDate(getStartAndEndOfWeek(new Date(y, m - 1, d)).monday);
+}
+function combShort(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' }).replace('.', '');
+}
+function combAddDays(dateStr, n) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return formatLocalDate(new Date(y, m - 1, d + n));
+}
+window.combAutoPrecio = function() {
+    const tipo = document.getElementById('comb-tipo').value;
+    document.getElementById('comb-precio').value = toNumber(appData.combustiblePrecios[tipo]).toFixed(2);
+    combCalc();
+};
+window.combCalc = function() {
+    const monto = toNumber(document.getElementById('comb-monto').value);
+    const precio = toNumber(document.getElementById('comb-precio').value);
+    document.getElementById('comb-galones').textContent = precio > 0 ? (monto / precio).toFixed(2) : '0.00';
+};
+window.guardarCargaCombustible = function() {
+    const fecha = document.getElementById('comb-fecha').value;
+    const monto = toNumber(document.getElementById('comb-monto').value);
+    const precio = toNumber(document.getElementById('comb-precio').value);
+    if (!fecha || monto <= 0) { alert('Ingresa la fecha y el monto cargado.'); return; }
+    appData.combustible.push({
+        id: createClientKey(), fecha, tipo: document.getElementById('comb-tipo').value,
+        monto, precioGalon: precio, galones: precio > 0 ? +(monto / precio).toFixed(2) : 0,
+        odometro: toNumber(document.getElementById('comb-odo').value) || null,
+        nota: document.getElementById('comb-nota').value.trim()
+    });
+    document.getElementById('comb-odo').value = '';
+    document.getElementById('comb-monto').value = '';
+    document.getElementById('comb-nota').value = '';
+    saveData(); renderCombustible();
+};
+window.eliminarCargaCombustible = function(id) {
+    if (!confirm('¿Eliminar esta carga de combustible?')) return;
+    appData.combustible = appData.combustible.filter(c => c.id !== id);
+    saveData(); renderCombustible();
+};
+window.guardarKmSemana = function(key, value) {
+    const km = toNumber(value);
+    if (km > 0) appData.combustibleKm[key] = km; else delete appData.combustibleKm[key];
+    saveData(); renderCombustible();
+};
+window.guardarPreciosCombustible = function() {
+    ['extra', 'ecopais', 'super', 'diesel'].forEach(k => { appData.combustiblePrecios[k] = toNumber(document.getElementById('pc-' + k).value); });
+    appData.combustiblePrecios.vigencia = document.getElementById('pc-vigencia').value.trim();
+    saveData(); combAutoPrecio(); renderCombustible();
+};
+const COMB_TIPOS = { extra: 'Extra', ecopais: 'Ecopaís', super: 'Súper', diesel: 'Diésel' };
+function renderCombustible() {
+    const cont = document.getElementById('comb-semanas');
+    if (!cont) return;
+    const pr = appData.combustiblePrecios;
+    ['extra', 'ecopais', 'super', 'diesel'].forEach(k => { const el = document.getElementById('pc-' + k); if (el && document.activeElement !== el) el.value = toNumber(pr[k]).toFixed(2); });
+    const vig = document.getElementById('pc-vigencia'); if (vig && document.activeElement !== vig) vig.value = pr.vigencia || '';
+    const fechaEl = document.getElementById('comb-fecha'); if (fechaEl && !fechaEl.value) fechaEl.value = formatLocalDate();
+    const precioEl = document.getElementById('comb-precio'); if (precioEl && !precioEl.value) combAutoPrecio();
+
+    const semanas = {};
+    semanas[combMondayKey(formatLocalDate())] = [];
+    Object.keys(appData.combustibleKm).forEach(k => { semanas[k] = semanas[k] || []; });
+    appData.combustible.forEach(c => { const k = combMondayKey(c.fecha); (semanas[k] = semanas[k] || []).push(c); });
+
+    cont.innerHTML = Object.keys(semanas).sort().reverse().map(key => {
+        const lista = semanas[key].sort((a, b) => a.fecha.localeCompare(b.fecha));
+        const gasto = lista.reduce((a, c) => a + toNumber(c.monto), 0);
+        const gal = lista.reduce((a, c) => a + toNumber(c.galones), 0);
+        const km = toNumber(appData.combustibleKm[key]);
+        const odos = lista.map(c => toNumber(c.odometro)).filter(v => v > 0);
+        const kmOdo = odos.length >= 2 ? Math.max(...odos) - Math.min(...odos) : 0;
+        const kmEf = km > 0 ? km : kmOdo;
+        const stats = kmEf > 0 && gasto > 0 ? `<span class="text-[11px] text-gray-500">$${(gasto / kmEf).toFixed(3)}/km${gal > 0 ? ` · ${(kmEf / gal).toFixed(1)} km/gal` : ''}${km > 0 ? '' : ' (km calculados por odómetro)'}</span>` : (kmOdo > 0 ? `<span class="text-[11px] text-gray-500">Por odómetro: ${kmOdo} km</span>` : '');
+        return `<details open class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <summary class="p-4 bg-gray-50 font-bold flex flex-wrap justify-between items-center gap-2 cursor-pointer border-b">
+                <span><i class="fa-solid fa-calendar-week text-amber-500 mr-2"></i>Lunes ${combShort(key)} – Domingo ${combShort(combAddDays(key, 6))}</span>
+                <span class="bg-amber-100 text-amber-800 px-3 py-1 rounded-md text-xs border border-amber-200">$${gasto.toFixed(2)} · ${gal.toFixed(2)} gal</span>
+            </summary>
+            <div class="p-4 flex flex-wrap items-center gap-3 border-b text-sm">
+                <label class="font-bold text-gray-600 text-xs">Km recorridos esta semana
+                    <input type="number" min="0" step="0.1" value="${km || ''}" onchange="guardarKmSemana('${key}', this.value)" class="ml-2 w-28 border border-gray-300 rounded-lg px-2 py-1 font-normal"></label>
+                ${stats}
+            </div>
+            ${lista.length ? `<div class="overflow-x-auto"><table class="w-full text-left text-xs md:text-sm whitespace-nowrap"><thead><tr class="text-gray-500 uppercase text-[11px] bg-gray-50/50 border-b"><th class="p-3">Fecha</th><th class="p-3">Tipo</th><th class="p-3">Monto</th><th class="p-3">$/gal</th><th class="p-3">Galones</th><th class="p-3">Odómetro</th><th class="p-3">Nota</th><th class="p-3"></th></tr></thead><tbody class="divide-y divide-gray-100">
+            ${lista.map(c => `<tr><td class="p-3">${esc(c.fecha)}</td><td class="p-3">${esc(COMB_TIPOS[c.tipo] || c.tipo)}</td><td class="p-3 font-bold">$${toNumber(c.monto).toFixed(2)}</td><td class="p-3">$${toNumber(c.precioGalon).toFixed(2)}</td><td class="p-3">${toNumber(c.galones).toFixed(2)}</td><td class="p-3">${c.odometro ? toNumber(c.odometro).toLocaleString('es-EC') + ' km' : '-'}</td><td class="p-3 text-gray-500">${esc(c.nota)}</td><td class="p-3 text-center"><button onclick="eliminarCargaCombustible('${esc(c.id)}')" class="text-red-500 hover:text-red-800" title="Eliminar"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('')}
+            </tbody></table></div>` : '<p class="p-4 text-sm text-gray-400">Sin cargas esta semana.</p>'}
+        </details>`;
+    }).join('');
+}
+window.renderCombustible = renderCombustible;
 
 function seedData() {
     return {
@@ -1229,6 +1406,17 @@ window.toggleSidebar = function() {
             setDashboardText('dash-ventas-mes', formatCurrency(ventasMes));
             setDashboardText('dash-por-cobrar', formatCurrency(porCobrar));
             setDashboardText('dash-utilidad-20', formatCurrency(utilidadEstimada20));
+            const enMora = appData.clientes.filter(c => c.estado === 'Activo' && toNumber(c.saldo) > 0 && (diasSinPago(c) ?? 0) > DIAS_MORA);
+            setDashboardText('dash-mora-monto', formatCurrency(enMora.reduce((a, c) => a + toNumber(c.saldo), 0)));
+            setDashboardText('dash-mora-cant', enMora.length.toLocaleString('es-EC'));
+            const combMes = (appData.combustible || []).filter(c => String(c.fecha || '').startsWith(monthKey));
+            const combGasto = combMes.reduce((a, c) => a + toNumber(c.monto), 0);
+            const combGal = combMes.reduce((a, c) => a + toNumber(c.galones), 0);
+            const combKm = Object.entries(appData.combustibleKm || {}).filter(([k]) => k.startsWith(monthKey)).reduce((a, [, v]) => a + toNumber(v), 0);
+            setDashboardText('dash-comb-gasto', formatCurrency(combGasto));
+            setDashboardText('dash-comb-gal', combGal.toFixed(2));
+            setDashboardText('dash-comb-km', combKm.toLocaleString('es-EC'));
+            setDashboardText('dash-comb-ckm', `$${(combKm > 0 ? combGasto / combKm : 0).toFixed(3)}`);
             setDashboardText('dash-cobrado-mes', formatCurrency(cobradoMes));
             setDashboardText('dash-ventas-cantidad', cantidadVentasMes.toLocaleString('es-EC'));
             setDashboardText('dash-ticket-promedio', formatCurrency(cantidadVentasMes ? ventasMes / cantidadVentasMes : 0));
@@ -1504,7 +1692,7 @@ window.toggleSidebar = function() {
                     const semaforoText = c.semaforo === 'Rojo' ? 'Moroso' : c.semaforo === 'Amarillo' ? 'Regular' : 'Excelente';
 
                     tr.innerHTML = `
-                        <td class="p-3 font-semibold">${c.idVenta || '-'}</td>
+                        <td class="p-3 font-semibold">${esc(c.idVenta) || '-'}</td>
                         <td class="p-3">${c.fecha || '-'}</td>
                         <td class="p-3">
                             <button onclick="verClienteDetail(${c.originalIndex})" class="text-blue-600 font-bold hover:underline text-left">
@@ -1512,7 +1700,7 @@ window.toggleSidebar = function() {
                             </button>
                             <div class="text-xs text-gray-500">CI: ${c.cedula || '-'}</div>
                         </td>
-                        <td class="p-3">${c.tel1 || '-'} ${c.tel2 ? '/ ' + c.tel2 : ''}</td>
+                        <td class="p-3">${esc(c.tel1) || '-'} ${c.tel2 ? '/ ' + esc(c.tel2) : ''}</td>
                         <td class="p-3 max-w-[150px] truncate" title="${c.articulo || ''}">${c.articulo || '-'}</td>
                         <td class="p-3">
                             <div class="text-gray-600 text-[11px] uppercase">Total: $${(c.valor || 0).toFixed(2)}</div>
@@ -1569,17 +1757,17 @@ function renderClientesActivos() {
             const semaforoText = c.semaforo === 'Rojo' ? 'Moroso' : c.semaforo === 'Amarillo' ? 'Regular' : 'Excelente';
 
             tr.innerHTML = `
-                <td class="p-3 font-bold text-gray-600">${c.idVenta || '-'}</td>
+                <td class="p-3 font-bold text-gray-600">${esc(c.idVenta) || '-'}</td>
                 <td class="p-3">
                     <button onclick="openPaymentHistory(${c.originalIndex})" class="font-bold text-gray-900 hover:text-blue-600 hover:underline text-left" title="Ver historial de pagos">
-                        ${c.nombre || '-'}
+                        ${esc(c.nombre) || '-'}
                     </button>
                 </td>
-                <td class="p-3 truncate max-w-[150px] text-gray-600" title="${c.direccion || ''}">${c.direccion || '-'}</td>
-                <td class="p-3 text-gray-600">${c.tel1 || '-'} ${c.tel2 ? '/ ' + c.tel2 : ''}</td>
+                <td class="p-3 truncate max-w-[150px] text-gray-600" title="${esc(c.direccion)}">${esc(c.direccion) || '-'}</td>
+                <td class="p-3 text-gray-600">${esc(c.tel1) || '-'} ${c.tel2 ? '/ ' + esc(c.tel2) : ''}</td>
                 <td class="p-3 text-gray-500">${c.fecha || '-'}</td>
                 <td class="p-3 font-bold text-red-600 text-lg">$${(c.saldo || 0).toFixed(2)}</td>
-                <td class="p-3 font-semibold text-blue-700">${c.ultimoPago || 'Sin abonos'}</td>
+                <td class="p-3 font-semibold text-blue-700">${c.ultimoPago || 'Sin abonos'}${(() => { const d = diasSinPago(c); return d === null ? '' : `<span class="block text-[10px] font-bold ${d > DIAS_MORA ? 'text-red-600' : 'text-gray-400'}">${d} días sin pago</span>`; })()}</td>
                 <td class="p-3 text-center cursor-pointer hover:bg-gray-100 rounded-lg transition-colors" onclick="cycleSemaforo(${c.originalIndex})" title="Clic para cambiar Tipo Cliente">
                     <div class="flex flex-col items-center justify-center gap-1">
                         <div class="w-4 h-4 rounded-full ${semaforoBg} shadow-inner border border-black/10"></div>
@@ -1587,6 +1775,7 @@ function renderClientesActivos() {
                     </div>
                 </td>
                 <td class="p-3 text-center space-x-3">
+                    ${whatsappLink(c) ? `<a href="${whatsappLink(c)}" target="_blank" rel="noopener" class="text-green-600 hover:text-green-800 bg-green-50 p-1.5 rounded inline-block" title="Recordar cobro por WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
                     <button onclick="openModalCliente(${c.originalIndex})" class="text-blue-500 hover:text-blue-800 bg-blue-50 p-1.5 rounded" title="Editar"><i class="fa-solid fa-pen"></i></button>
                     <button onclick="deleteCliente(${c.originalIndex})" class="text-red-500 hover:text-red-800 bg-red-50 p-1.5 rounded" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                 </td>
@@ -1732,11 +1921,11 @@ function renderClientesActivos() {
             if (!c) return;
             document.getElementById('vcli-nombre').innerText = c.nombre || 'Detalle';
             document.getElementById('vcli-info').innerHTML = `
-                <div><span class="text-xs text-gray-500 block uppercase font-bold">ID Venta:</span> <span class="font-semibold text-gray-900">${c.idVenta || '-'}</span></div>
+                <div><span class="text-xs text-gray-500 block uppercase font-bold">ID Venta:</span> <span class="font-semibold text-gray-900">${esc(c.idVenta) || '-'}</span></div>
                 <div><span class="text-xs text-gray-500 block uppercase font-bold">Cédula:</span> <span class="font-semibold text-gray-900">${c.cedula || '-'}</span></div>
                 <div><span class="text-xs text-gray-500 block uppercase font-bold">Fecha:</span> <span class="font-semibold text-gray-900">${c.fecha || '-'}</span></div>
                 <div><span class="text-xs text-gray-500 block uppercase font-bold">Teléfono:</span> <span class="font-semibold text-gray-900">${c.tel1 || '-'}</span></div>
-                <div class="col-span-2"><span class="text-xs text-gray-500 block uppercase font-bold">Dirección:</span> <span class="font-semibold text-gray-900">${c.direccion || '-'}</span></div>
+                <div class="col-span-2"><span class="text-xs text-gray-500 block uppercase font-bold">Dirección:</span> <span class="font-semibold text-gray-900">${esc(c.direccion) || '-'}</span></div>
                 <div class="col-span-2 bg-red-50 p-2 rounded border border-red-100"><span class="text-xs text-red-500 block uppercase font-bold">Saldo Actual:</span> <span class="text-red-600 font-bold text-xl">$${(c.saldo || 0).toFixed(2)}</span></div>
             `;
             renderClientDocumentList(c);
@@ -2071,6 +2260,10 @@ listaCalendario.sort((a, b) => {
             } else {
                 // Registro de cobro nuevo
                 const newCliIndex = appData.clientes.findIndex(c => c.nombre === nombreCliente);
+                if (newCliIndex !== -1 && nuevoPago > toNumber(appData.clientes[newCliIndex].saldo) &&
+                    !confirm(`El pago ($${nuevoPago.toFixed(2)}) es mayor que el saldo ($${toNumber(appData.clientes[newCliIndex].saldo).toFixed(2)}). El saldo quedará en 0 y la diferencia no se registra como saldo a favor. ¿Continuar?`)) {
+                    return;
+                }
                 if (newCliIndex !== -1) {
                     appData.clientes[newCliIndex].saldo = (appData.clientes[newCliIndex].saldo || 0) - nuevoPago;
                     if (appData.clientes[newCliIndex].saldo < 0) appData.clientes[newCliIndex].saldo = 0;
@@ -2167,10 +2360,10 @@ listaCalendario.sort((a, b) => {
                                 ${lista.map(c => `
                                     <tr class="hover:bg-green-50/50 transition-colors">
                                         <td class="p-3 text-gray-600">${c.fecha || '-'}</td>
-                                        <td class="p-3 font-bold text-gray-900">${c.cliente || '-'}</td>
+                                        <td class="p-3 font-bold text-gray-900">${esc(c.cliente) || '-'}</td>
                                         <td class="p-3 text-green-600 font-black text-base">$${(c.pago || 0).toFixed(2)}</td>
                                         <td class="p-3 font-bold text-red-500">$${(c.saldo || 0).toFixed(2)}</td>
-                                        <td class="p-3 font-mono text-gray-500 bg-gray-50 rounded px-2 m-2 inline-block border">${c.recibo || '-'}</td>
+                                        <td class="p-3 font-mono text-gray-500 bg-gray-50 rounded px-2 m-2 inline-block border">${esc(c.recibo) || '-'}</td>
                                         <td class="p-3 text-center space-x-3">
                                             <button onclick="openModalCobro(${c.originalIndex})" class="text-blue-500 hover:text-blue-800" title="Editar"><i class="fa-solid fa-pen"></i></button>
                                             <button onclick="deleteCobro(${c.originalIndex})" class="text-red-500 hover:text-red-800" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
@@ -2296,7 +2489,7 @@ listaCalendario.sort((a, b) => {
                 tr.className = 'border-b hover:bg-gray-50 transition-colors';
                 tr.innerHTML = `
                     <td class="p-3 text-gray-500">${c.fecha || '-'}</td>
-                    <td class="p-3 font-bold text-gray-800">${c.nombre || '-'}</td>
+                    <td class="p-3 font-bold text-gray-800">${esc(c.nombre) || '-'}</td>
                     <td class="p-3 text-center"><span class="bg-gray-100 text-gray-800 px-2 py-1 rounded font-bold border">${c.cantidad || 1}</span></td>
                     <td class="p-3 font-bold text-red-600">$${(c.valor || 0).toFixed(2)}</td>
                     <td class="p-3 text-gray-600">$${(c.precio || 0).toFixed(2)}</td>
