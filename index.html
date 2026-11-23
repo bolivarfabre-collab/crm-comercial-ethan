@@ -291,6 +291,7 @@
                 <section id="sec-cobros" class="tab-content hidden space-y-6">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
                         <h2 class="text-2xl font-bold text-gray-800">Gestión de Cobros</h2>
+                        <button onclick="mostrarClientesRepetidos()" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 px-4 rounded-xl font-bold shadow-sm text-sm"><i class="fa-solid fa-user-group mr-1"></i> Clientes repetidos</button>
                         <button onclick="openModalCobro()" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl font-bold shadow-sm flex items-center justify-center gap-2 text-sm">
                             <i class="fa-solid fa-hand-holding-dollar text-base"></i> Registrar Reporte de Cobro
                         </button>
@@ -449,6 +450,16 @@
                         <input type="number" min="0" step="1" id="comb-odo" placeholder="Odómetro actual en km (opcional)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <input type="text" id="comb-nota" placeholder="Nota (opcional)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
                         <button onclick="guardarCargaCombustible()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-lg shadow-sm">Guardar carga</button>
+                    </div>
+                </div>
+
+                <div id="modal-repetidos" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 space-y-4">
+                        <div class="flex items-center justify-between border-b pb-3">
+                            <h3 class="text-lg font-bold text-gray-800"><i class="fa-solid fa-user-group text-blue-600 mr-2"></i>Clientes con más de una venta</h3>
+                            <button onclick="closeModal('modal-repetidos')" class="text-gray-400 hover:text-gray-700"><i class="fa-solid fa-xmark text-xl"></i></button>
+                        </div>
+                        <div id="rep-contenido" class="space-y-4 text-sm"></div>
                     </div>
                 </div>
 
@@ -647,6 +658,7 @@
                 <div>
                     <label class="block font-semibold text-gray-700">Seleccionar Cliente</label>
                     <select id="cob-cliente" onchange="onCobroClientChange()" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none"></select>
+                    <label class="flex items-center gap-2 mt-2 text-xs text-gray-500"><input type="checkbox" id="cob-ver-inactivos" onchange="llenarSelectCobro(document.getElementById('cob-cliente').value); onCobroClientChange()"> Mostrar también ventas inactivas</label>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -655,9 +667,10 @@
                     </div>
                     <div>
                         <label class="block font-semibold text-gray-700">Nuevo Saldo ($)</label>
-                        <input type="number" step="0.01" id="cob-saldo" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 font-bold text-red-600 outline-none">
+                        <input type="number" step="0.01" id="cob-saldo" oninput="marcarSaldoManual()" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 font-bold text-red-600 outline-none">
                     </div>
                 </div>
+                <p id="cob-nota-saldo" class="text-[11px] text-gray-500 -mt-2"></p>
                 <div>
                     <label class="block font-semibold text-gray-700">No. Recibo</label>
                     <input type="text" id="cob-recibo" class="w-full border border-gray-300 bg-gray-50 p-2.5 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none">
@@ -1222,19 +1235,22 @@ window.guardarCargaCombustible = function() {
     const monto = toNumber(document.getElementById('comb-monto').value);
     if (!fecha || monto <= 0) { alert('Ingresa la fecha y el valor gastado.'); return; }
     const precio = precioVigente(fecha);
-    appData.combustible.push({
+    const carga = {
         id: createClientKey(), fecha, tipo: 'extra', monto, precioGalon: precio,
         galones: +(monto / precio).toFixed(2),
         odometro: toNumber(document.getElementById('comb-odo').value) || null,
         km: null, nota: document.getElementById('comb-nota').value.trim()
-    });
+    };
+    appData.combustible.push(carga);
+    sincronizarMovimiento('combustible', carga.id, { fecha, tipo: 'salida', monto, categoria: 'Combustible', descripcion: carga.nota || 'Carga de gasolina' });
     closeModal('modal-carga');
-    saveData(); renderCombustible();
+    saveData(); renderCombustible(); renderMovimientos();
 };
 window.eliminarCargaCombustible = function(id) {
     if (!confirm('¿Eliminar esta carga de combustible?')) return;
     appData.combustible = appData.combustible.filter(c => c.id !== id);
-    saveData(); renderCombustible();
+    sincronizarMovimiento('combustible', id, null);
+    saveData(); renderCombustible(); renderMovimientos();
 };
 window.guardarKmCarga = function(id, value) {
     const carga = appData.combustible.find(c => c.id === id);
@@ -1295,7 +1311,7 @@ window.renderCombustible = renderCombustible;
 // ==========================================
 // ENTRADAS / SALIDAS (movimientos personales)
 // ==========================================
-const MOV_CATS_BASE = ['Combustible', 'Gastos Personales', 'Deudas', 'Mantenimiento vehiculo', 'Indriver', 'Almohadas', 'Crédito Colchón C. Ethan'];
+const MOV_CATS_BASE = ['Combustible', 'Gastos Personales', 'Deudas', 'Mantenimiento vehiculo', 'Indriver', 'Almohadas', 'Comercial Ethan'];
 let movFiltro = null;
 let movEditId = null;
 function movCategorias() { return [...MOV_CATS_BASE, ...(appData.movCategorias || []).filter(c => !MOV_CATS_BASE.includes(c))]; }
@@ -1357,7 +1373,7 @@ function renderMovimientos() {
                 <span class="flex items-center gap-3 text-xs"><span class="text-emerald-400">Entradas: $${ent.toFixed(2)}</span><span class="text-rose-400">Salidas: $${sal.toFixed(2)}</span><span class="bg-white px-3 py-1 rounded-full ${bal < 0 ? 'text-rose-600' : 'text-indigo-700'}">Balance: $${bal.toFixed(2)}</span></span>
             </summary>
             <div class="overflow-x-auto"><table class="w-full text-left text-sm whitespace-nowrap"><thead><tr class="bg-slate-900 text-white text-xs uppercase"><th class="p-3 pl-4">Fecha</th><th class="p-3">Tipo</th><th class="p-3">Categoría</th><th class="p-3">Monto</th><th class="p-3">Descripción</th><th class="p-3 text-center">Acciones</th></tr></thead><tbody class="divide-y divide-gray-100">
-            ${rows.map(m => { const ent = m.tipo === 'entrada'; return `<tr class="hover:bg-gray-50"><td class="p-3 pl-4 text-gray-600">${esc(m.fecha)}</td><td class="p-3"><span class="px-3 py-1 rounded-full text-xs ${ent ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${ent ? 'Entrada' : 'Salida'}</span></td><td class="p-3"><button data-c="${esc(m.categoria)}" onclick="toggleFiltroCategoria(this.dataset.c)" title="Clic para ver solo esta categoría" class="text-indigo-600 font-semibold hover:underline">${esc(m.categoria)}</button></td><td class="p-3 font-semibold ${ent ? 'text-emerald-600' : 'text-rose-600'}">$${toNumber(m.monto).toFixed(2)}</td><td class="p-3 text-gray-600">${esc(m.descripcion) || '-'}</td><td class="p-3 text-center"><button onclick="openModalMov('${esc(m.id)}')" class="text-indigo-600 hover:text-indigo-800 mr-3" title="Editar"><i class="fa-solid fa-pen"></i></button><button onclick="eliminarMov('${esc(m.id)}')" class="text-rose-600 hover:text-rose-800" title="Eliminar"><i class="fa-solid fa-trash"></i></button></td></tr>`; }).join('')}
+            ${rows.map(m => { const ent = m.tipo === 'entrada'; return `<tr class="hover:bg-gray-50"><td class="p-3 pl-4 text-gray-600">${esc(m.fecha)}</td><td class="p-3"><span class="px-3 py-1 rounded-full text-xs ${ent ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${ent ? 'Entrada' : 'Salida'}</span></td><td class="p-3"><button data-c="${esc(m.categoria)}" onclick="toggleFiltroCategoria(this.dataset.c)" title="Clic para ver solo esta categoría" class="text-indigo-600 font-semibold hover:underline">${esc(m.categoria)}</button></td><td class="p-3 font-semibold ${ent ? 'text-emerald-600' : 'text-rose-600'}">$${toNumber(m.monto).toFixed(2)}</td><td class="p-3 text-gray-600">${esc(m.descripcion) || '-'}${m.origen ? `<span class="ml-2 text-[10px] text-gray-400">· ${m.origen === 'cobro' ? 'desde Cobros' : 'desde Combustible'}</span>` : ''}</td><td class="p-3 text-center"><button onclick="openModalMov('${esc(m.id)}')" class="text-indigo-600 hover:text-indigo-800 mr-3" title="Editar"><i class="fa-solid fa-pen"></i></button><button onclick="eliminarMov('${esc(m.id)}')" class="text-rose-600 hover:text-rose-800" title="Eliminar"><i class="fa-solid fa-trash"></i></button></td></tr>`; }).join('')}
             </tbody></table></div>
         </details>`;
     }).join('');
@@ -1384,6 +1400,108 @@ function importarHistorialAlmohadas() {
     });
     appData.importaciones = { ...(appData.importaciones || {}), [IMPORT_ALMOHADAS_ID]: true };
     return true;
+}
+
+// ==========================================
+// MIGRACIÓN: enlazar cobros existentes por ID de venta + respaldo previo + clientes repetidos
+// ==========================================
+const MIGRACION_COBROS_ID = 'cobros_idventa_v1';
+function descargarRespaldoPrevio() {
+    try {
+        const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `respaldo_antes_de_actualizar_${formatLocalDate()}.json`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    } catch (err) { console.error('No se pudo descargar el respaldo previo', err); }
+}
+function migrarCobrosAIdVenta() {
+    if (appData.importaciones && appData.importaciones[MIGRACION_COBROS_ID]) return false;
+    appData.cobros.forEach(c => {
+        if (c.idVenta) return;
+        const cands = appData.clientes.filter(x => x.nombre === c.cliente);
+        if (!cands.length) return;
+        if (cands.length === 1) { c.idVenta = cands[0].idVenta || ''; return; }
+        // Cliente repetido: la venta más reciente que ya existía en la fecha del pago
+        const orden = [...cands].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+        const previas = orden.filter(x => (x.fecha || '') <= (c.fecha || ''));
+        c.idVenta = (previas.length ? previas[previas.length - 1] : orden[0]).idVenta || '';
+        c.idVentaInferido = true;
+    });
+    appData.clientes.forEach((_, i) => actualizarUltimoPagoVenta(i));
+    appData.importaciones = { ...(appData.importaciones || {}), [MIGRACION_COBROS_ID]: true };
+    return true;
+}
+// Pagos de la venta nueva hechos desde la recompra, registrados con el sistema anterior
+// (que los aplicaba al primer cliente con ese nombre). Solo cuenta si ese primer registro era la venta vieja.
+function ajustesRecompra() {
+    const grupos = {};
+    appData.clientes.forEach((c, i) => { const k = String(c.nombre || '').trim().toLowerCase(); if (k) (grupos[k] = grupos[k] || []).push(i); });
+    return Object.values(grupos).filter(g => g.length > 1).map(g => {
+        const ventas = g.map(i => ({ ...appData.clientes[i], _i: i }));
+        const nueva = [...ventas].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).pop();
+        const primeraDelArreglo = ventas[0];
+        const afectado = String(primeraDelArreglo.idVenta) !== String(nueva.idVenta);
+        const pagos = appData.cobros.filter(c => String(c.idVenta) === String(nueva.idVenta) && (c.fecha || '') >= (nueva.fecha || '') && (c.saldoAnterior === undefined || c.saldoAnterior === null) && !c.descontado);
+        const monto = pagos.reduce((a, c) => a + toNumber(c.pago), 0);
+        const otrasInactivas = ventas.filter(v => String(v.idVenta) !== String(nueva.idVenta)).every(v => v.estado !== 'Activo');
+        return { ventas, nueva, pagos, monto, sugerir: afectado && monto > 0 && otrasInactivas && nueva.estado === 'Activo' };
+    });
+}
+window.mostrarClientesRepetidos = function() {
+    const lista = ajustesRecompra();
+    const cont = document.getElementById('rep-contenido');
+    cont.innerHTML = lista.length ? lista.map(g => `
+        <div class="border border-gray-200 rounded-xl p-4">
+            <p class="font-bold text-gray-800 mb-2">${esc(g.nueva.nombre)}</p>
+            ${g.ventas.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).map(v => `<p class="text-xs text-gray-600">Venta #${esc(v.idVenta)} · ${esc(v.fecha)} · ${esc(v.estado)} · Saldo $${toNumber(v.saldo).toFixed(2)}</p>`).join('')}
+            ${g.sugerir ? `<div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
+                ${g.pagos.length} pago(s) por <b>$${g.monto.toFixed(2)}</b> desde la nueva venta se aplicaron a la venta anterior (ya en $0), por eso el saldo de la venta #${esc(g.nueva.idVenta)} pudo quedar de más.
+                Saldo actual $${toNumber(g.nueva.saldo).toFixed(2)} → con el descuento: <b>$${Math.max(0, toNumber(g.nueva.saldo) - g.monto).toFixed(2)}</b>.
+                <button onclick="descontarPagosRecompra('${esc(g.nueva.idVenta)}')" class="mt-2 block bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg">Descontar $${g.monto.toFixed(2)}</button>
+            </div>` : '<p class="mt-2 text-xs text-emerald-700">Sin ajustes pendientes.</p>'}
+        </div>`).join('') : '<p class="text-gray-500">No hay clientes con más de una venta.</p>';
+    document.getElementById('modal-repetidos').classList.remove('hidden');
+};
+window.descontarPagosRecompra = function(idVenta) {
+    const g = ajustesRecompra().find(x => String(x.nueva.idVenta) === String(idVenta));
+    if (!g || !g.sugerir) return;
+    const cli = appData.clientes[g.nueva._i];
+    const nuevo = Math.max(0, +(toNumber(cli.saldo) - g.monto).toFixed(2));
+    if (!confirm(`Se bajará el saldo de ${cli.nombre} (venta #${cli.idVenta}) de $${toNumber(cli.saldo).toFixed(2)} a $${nuevo.toFixed(2)}. ¿Continuar?`)) return;
+    cli.saldo = nuevo;
+    cli.estado = nuevo > 0 ? 'Activo' : 'Inactivo';
+    g.pagos.forEach(c => { c.descontado = true; });
+    saveData(); renderCobros(); renderClientes(); renderClientesActivos();
+    window.mostrarClientesRepetidos();
+};
+
+// ==========================================
+// SINCRONIZACIÓN AUTOMÁTICA hacia Entradas / Salidas (solo registros nuevos)
+// ==========================================
+const CATEGORIAS_RENOMBRADAS = { 'Crédito Colchón C. Ethan': 'Comercial Ethan' };
+function sincronizarMovimiento(origen, origenId, datos) {
+    const i = appData.movimientos.findIndex(m => m.origen === origen && m.origenId === origenId);
+    if (!datos) { if (i !== -1) appData.movimientos.splice(i, 1); return; }
+    if (i !== -1) Object.assign(appData.movimientos[i], datos);
+    else appData.movimientos.push({ id: createClientKey(), origen, origenId, ...datos });
+}
+function vincularOrigenes() {
+    let cambio = false;
+    appData.combustible.forEach(c => {
+        if (!String(c.id).startsWith('imp-')) return;
+        const m = appData.movimientos.find(x => x.id === String(c.id).slice(4) && !x.origen);
+        if (m) { m.origen = 'combustible'; m.origenId = c.id; cambio = true; }
+    });
+    return cambio;
+}
+function renombrarCategorias() {
+    let cambio = false;
+    appData.movimientos.forEach(m => { const n = CATEGORIAS_RENOMBRADAS[m.categoria]; if (n) { m.categoria = n; cambio = true; } });
+    const antes = JSON.stringify(appData.movCategorias);
+    appData.movCategorias = [...new Set(appData.movCategorias.map(c => CATEGORIAS_RENOMBRADAS[c] || c))].filter(c => !MOV_CATS_BASE.includes(c));
+    return cambio || antes !== JSON.stringify(appData.movCategorias);
 }
 
 function seedData() {
@@ -1421,9 +1539,15 @@ async function cargarDatosFirebase() {
         const docSnap = await getDoc(dataRef);
         if (docSnap.exists()) {
             appData = normalizeAppData(docSnap.data());
+            const marcas = appData.importaciones || {};
+            if (!marcas[IMPORT_ALMOHADAS_ID] || !marcas[MIGRACION_COBROS_ID]) descargarRespaldoPrevio();
             const huboImportacion = importarHistorialAlmohadas();
+            const huboMigracion = migrarCobrosAIdVenta();
+            const huboVinculo = vincularOrigenes();
+            const huboRenombre = renombrarCategorias();
             persistLocalData();
-            if (huboImportacion) await saveData();
+            if (huboImportacion || huboMigracion || huboVinculo || huboRenombre) await saveData();
+            if (huboMigracion && ajustesRecompra().some(g => g.sugerir)) setTimeout(() => window.mostrarClientesRepetidos(), 1200);
         } else {
             const localData = readLocalData();
             const hasLocalData = localData.clientes.length || localData.cobros.length || localData.compras.length || Object.values(localData.caja || {}).some(value => toNumber(value) !== 0);
@@ -2335,159 +2459,161 @@ listaCalendario.sort((a, b) => {
         // ==========================================
         // 5. COBROS
         // ==========================================
+        // ---- Cobros enlazados por ID de venta ----
+        let cobroSaldoManual = false;
+        function valorDeCliente(i) { const c = appData.clientes[i]; return c && c.idVenta ? String(c.idVenta) : `idx:${i}`; }
+        function clienteIndexDeValor(v) {
+            if (!v) return -1;
+            if (String(v).startsWith('idx:')) return Number(String(v).slice(4));
+            return appData.clientes.findIndex(c => String(c.idVenta) === String(v));
+        }
+        function cobroClienteIndex(cobro) {
+            if (cobro && cobro.idVenta) {
+                const i = appData.clientes.findIndex(c => String(c.idVenta) === String(cobro.idVenta));
+                if (i !== -1) return i;
+            }
+            const m = appData.clientes.map((c, i) => c.nombre === cobro.cliente ? i : -1).filter(i => i !== -1);
+            return m.length === 1 ? m[0] : -1;
+        }
+        // Cuánto bajó este cobro el saldo de su venta (exacto, incluso si se ajustó a mano)
+        function reduccionCobro(c) {
+            return (c.saldoAnterior !== undefined && c.saldoAnterior !== null) ? toNumber(c.saldoAnterior) - toNumber(c.saldo) : toNumber(c.pago);
+        }
+        function llenarSelectCobro(seleccion) {
+            const select = document.getElementById('cob-cliente');
+            const verInactivas = document.getElementById('cob-ver-inactivos').checked;
+            select.innerHTML = '<option value="">-- Seleccionar Cliente --</option>';
+            appData.clientes.forEach((c, i) => {
+                const activo = c.estado === 'Activo';
+                if (!activo && !verInactivas && valorDeCliente(i) !== seleccion) return;
+                const opt = document.createElement('option');
+                opt.value = valorDeCliente(i);
+                opt.dataset.index = i;
+                opt.textContent = `${c.nombre || 'Sin nombre'} · Venta ${c.idVenta || '-'} · Saldo $${toNumber(c.saldo).toFixed(2)}${activo ? '' : ' (Inactiva)'}`;
+                select.appendChild(opt);
+            });
+            select.value = seleccion || '';
+        }
+        window.llenarSelectCobro = llenarSelectCobro;
+
         function openModalCobro(index = null) {
             document.getElementById('form-cobro').reset();
             document.getElementById('cob-index').value = index !== null ? index : '';
             document.getElementById('title-modal-cobro').innerText = index !== null ? 'Editar Cobro' : 'Registrar Cobro';
-
-            const select = document.getElementById('cob-cliente');
-            select.innerHTML = '<option value="">-- Seleccionar Cliente --</option>';
-            appData.clientes.forEach((c) => {
-                const opt = document.createElement('option');
-                opt.value = c.nombre;
-                opt.dataset.index = appData.clientes.indexOf(c);
-                opt.textContent = `${c.nombre || 'Sin nombre'} (Saldo: $${(c.saldo || 0).toFixed(2)})`;
-                select.appendChild(opt);
-            });
-
-            if (index !== null) {
-                const cobro = appData.cobros[index];
+            cobroSaldoManual = false;
+            const cobro = index !== null ? appData.cobros[index] : null;
+            let seleccion = '';
+            if (cobro) { const ci = cobroClienteIndex(cobro); if (ci !== -1) seleccion = valorDeCliente(ci); }
+            llenarSelectCobro(seleccion);
+            document.getElementById('cob-nota-saldo').innerHTML = '';
+            if (cobro) {
                 document.getElementById('cob-fecha').value = cobro.fecha || '';
-                select.value = cobro.cliente || '';
                 document.getElementById('cob-pago').value = cobro.pago !== undefined ? cobro.pago : '';
                 document.getElementById('cob-recibo').value = cobro.recibo || '';
                 onCobroClientChange();
+                if (cobro.saldoManual) {
+                    document.getElementById('cob-saldo').value = toNumber(cobro.saldo).toFixed(2);
+                    cobroSaldoManual = true;
+                    notaSaldoCobro();
+                }
             } else {
                 document.getElementById('cob-fecha').value = formatLocalDate();
             }
-
             document.getElementById('modal-cobro').classList.remove('hidden');
         }
 
-        function onCobroClientChange() {
-            const select = document.getElementById('cob-cliente');
-            const selectedOpt = select.options[select.selectedIndex];
-            const isEdit = document.getElementById('cob-index').value !== '';
-            
-            if (selectedOpt && selectedOpt.dataset.index) {
-                const cli = appData.clientes[selectedOpt.dataset.index];
-                let saldoReferencia = cli.saldo || 0;
-
-                if(isEdit) {
-                    const cobroViejo = appData.cobros[document.getElementById('cob-index').value];
-                    if(cobroViejo.cliente === cli.nombre) {
-                        saldoReferencia += parseFloat(cobroViejo.pago || 0);
-                    }
-                }
-                document.getElementById('cob-saldo').value = saldoReferencia.toFixed(2);
-                calcNuevoSaldoCobro(saldoReferencia);
+        // Saldo de la venta antes de este cobro (si se edita, se devuelve primero el efecto del cobro viejo)
+        function baseSaldoCobro() {
+            const ci = clienteIndexDeValor(document.getElementById('cob-cliente').value);
+            if (ci === -1) return null;
+            let base = toNumber(appData.clientes[ci].saldo);
+            const idx = document.getElementById('cob-index').value;
+            if (idx !== '') {
+                const viejo = appData.cobros[idx];
+                if (cobroClienteIndex(viejo) === ci) base += reduccionCobro(viejo);
             }
+            return base;
+        }
+        function notaSaldoCobro() {
+            const el = document.getElementById('cob-nota-saldo');
+            const base = baseSaldoCobro();
+            if (base === null) { el.innerHTML = ''; return; }
+            const auto = Math.max(0, base - toNumber(document.getElementById('cob-pago').value)).toFixed(2);
+            el.innerHTML = cobroSaldoManual
+                ? `Ajustado a mano (automático: $${auto}). <button type="button" onclick="calcNuevoSaldoCobro()" class="underline text-blue-600">Volver al automático</button>`
+                : `Automático: saldo anterior $${base.toFixed(2)} menos el pago. Puedes corregir el nuevo saldo a mano.`;
+        }
+        window.marcarSaldoManual = function() { cobroSaldoManual = true; notaSaldoCobro(); };
+
+        function onCobroClientChange() { calcNuevoSaldoCobro(); }
+        function calcNuevoSaldoCobro() {
+            cobroSaldoManual = false;
+            const base = baseSaldoCobro();
+            if (base === null) { document.getElementById('cob-saldo').value = ''; notaSaldoCobro(); return; }
+            document.getElementById('cob-saldo').value = Math.max(0, base - toNumber(document.getElementById('cob-pago').value)).toFixed(2);
+            notaSaldoCobro();
         }
 
-        function calcNuevoSaldoCobro(saldoReferencia = null) {
-            const select = document.getElementById('cob-cliente');
-            const selectedOpt = select.options[select.selectedIndex];
-            if (selectedOpt && selectedOpt.dataset.index) {
-                if(saldoReferencia === null || typeof saldoReferencia !== 'number'){
-                    const cli = appData.clientes[selectedOpt.dataset.index];
-                    saldoReferencia = cli.saldo || 0;
-                    const isEdit = document.getElementById('cob-index').value !== '';
-                    if(isEdit) {
-                        const cobroViejo = appData.cobros[document.getElementById('cob-index').value];
-                        if(cobroViejo.cliente === cli.nombre) saldoReferencia += parseFloat(cobroViejo.pago || 0);
-}
-                }
-                
-                const pago = parseFloat(document.getElementById('cob-pago').value || 0);
-                const nuevo = saldoReferencia - pago;
-                document.getElementById('cob-saldo').value = (nuevo >= 0 ? nuevo : 0).toFixed(2);
-            }
+        // Fecha del último pago de UNA venta (ya no mezcla ventas del mismo nombre)
+        function actualizarUltimoPagoVenta(cliIndex) {
+            if (cliIndex === -1 || !appData.clientes[cliIndex]) return;
+            const fechas = appData.cobros.filter(c => cobroClienteIndex(c) === cliIndex).map(c => c.fecha || '').sort().reverse();
+            appData.clientes[cliIndex].ultimoPago = fechas[0] || '';
         }
-
-        // Sincronización precisa en tiempo real del campo 'ultimoPago'
-        function actualizarUltimoPagoCliente(clienteNombre) {
-            const cobrosCliente = appData.cobros.filter(c => c.cliente === clienteNombre);
-            const indexCli = appData.clientes.findIndex(c => c.nombre === clienteNombre);
-            
-            if (indexCli !== -1) {
-                if (cobrosCliente.length > 0) {
-                    cobrosCliente.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-                    appData.clientes[indexCli].ultimoPago = cobrosCliente[0].fecha;
-                } else {
-                    appData.clientes[indexCli].ultimoPago = '';
-                }
-            }
-        } 
 
         function saveCobro(e) {
             e.preventDefault();
             const idx = document.getElementById('cob-index').value;
-            const select = document.getElementById('cob-cliente');
-            const nombreCliente = select.value;
-            const nuevoPago = parseFloat(document.getElementById('cob-pago').value || 0);
+            const cliIndex = clienteIndexDeValor(document.getElementById('cob-cliente').value);
+            if (cliIndex === -1) { alert('Selecciona la venta del cliente.'); return; }
+            const cli = appData.clientes[cliIndex];
+            const nuevoPago = toNumber(document.getElementById('cob-pago').value);
             const fechaCobro = document.getElementById('cob-fecha').value;
-            
-            let saldoFinal = 0;
-            
-            if (idx !== '') {
-                // 1. Revertir impacto del cobro anterior en el cliente original
-                const oldCobro = appData.cobros[idx];
-                const oldCliIndex = appData.clientes.findIndex(c => c.nombre === oldCobro.cliente);
-                if (oldCliIndex !== -1) {
-                    appData.clientes[oldCliIndex].saldo = (appData.clientes[oldCliIndex].saldo || 0) + parseFloat(oldCobro.pago || 0);
-                    if (appData.clientes[oldCliIndex].saldo > 0) {
-                        appData.clientes[oldCliIndex].estado = 'Activo';
-                    }
-                }
-                
-                // 2. Aplicar el nuevo pago al cliente seleccionado
-                const newCliIndex = appData.clientes.findIndex(c => c.nombre === nombreCliente);
-                if (newCliIndex !== -1) {
-                    appData.clientes[newCliIndex].saldo = (appData.clientes[newCliIndex].saldo || 0) - nuevoPago;
-                    if (appData.clientes[newCliIndex].saldo < 0) appData.clientes[newCliIndex].saldo = 0;
-                    if (appData.clientes[newCliIndex].saldo === 0) appData.clientes[newCliIndex].estado = 'Inactivo';
-                    saldoFinal = appData.clientes[newCliIndex].saldo;
-                }
+            const viejo = idx !== '' ? appData.cobros[idx] : null;
+            const viejoCli = viejo ? cobroClienteIndex(viejo) : -1;
 
-                // 3. Actualizar objeto de cobro
-                appData.cobros[idx] = {
-                    fecha: fechaCobro,
-                    cliente: nombreCliente,
-                    pago: nuevoPago,
-                    saldo: saldoFinal,
-                    recibo: document.getElementById('cob-recibo').value
-                };
+            // 1. Saldo de la venta antes de este cobro
+            let base = toNumber(cli.saldo);
+            if (viejo && viejoCli === cliIndex) base += reduccionCobro(viejo);
 
-                actualizarUltimoPagoCliente(oldCobro.cliente);
-                if (oldCobro.cliente !== nombreCliente) actualizarUltimoPagoCliente(nombreCliente);
-
+            // 2. Nuevo saldo: automático o el que escribiste a mano
+            let saldoNuevo;
+            if (cobroSaldoManual) {
+                saldoNuevo = Math.max(0, toNumber(document.getElementById('cob-saldo').value));
             } else {
-                // Registro de cobro nuevo
-                const newCliIndex = appData.clientes.findIndex(c => c.nombre === nombreCliente);
-                if (newCliIndex !== -1 && nuevoPago > toNumber(appData.clientes[newCliIndex].saldo) &&
-                    !confirm(`El pago ($${nuevoPago.toFixed(2)}) es mayor que el saldo ($${toNumber(appData.clientes[newCliIndex].saldo).toFixed(2)}). El saldo quedará en 0 y la diferencia no se registra como saldo a favor. ¿Continuar?`)) {
-                    return;
-                }
-                if (newCliIndex !== -1) {
-                    appData.clientes[newCliIndex].saldo = (appData.clientes[newCliIndex].saldo || 0) - nuevoPago;
-                    if (appData.clientes[newCliIndex].saldo < 0) appData.clientes[newCliIndex].saldo = 0;
-                    if (appData.clientes[newCliIndex].saldo === 0) appData.clientes[newCliIndex].estado = 'Inactivo';
-                    saldoFinal = appData.clientes[newCliIndex].saldo;
-                }
-
-                appData.cobros.push({
-                    fecha: fechaCobro,
-                    cliente: nombreCliente,
-                    pago: nuevoPago,
-                    saldo: saldoFinal,
-                    recibo: document.getElementById('cob-recibo').value
-                });
-                
-                actualizarUltimoPagoCliente(nombreCliente);
+                saldoNuevo = base - nuevoPago;
+                if (saldoNuevo < -0.004 && !confirm(`El pago ($${nuevoPago.toFixed(2)}) es mayor que el saldo de esta venta ($${base.toFixed(2)}). El saldo quedará en $0.00. ¿Continuar?`)) return;
+                saldoNuevo = Math.max(0, saldoNuevo);
             }
-            
+            saldoNuevo = +saldoNuevo.toFixed(2);
+
+            // 3. Devolver el efecto del cobro viejo si estaba en otra venta
+            if (viejo && viejoCli !== -1 && viejoCli !== cliIndex) {
+                const v = appData.clientes[viejoCli];
+                v.saldo = +(toNumber(v.saldo) + reduccionCobro(viejo)).toFixed(2);
+                if (v.saldo > 0) v.estado = 'Activo';
+            }
+
+            // 4. Aplicar a la venta elegida
+            cli.saldo = saldoNuevo;
+            cli.estado = saldoNuevo > 0 ? 'Activo' : 'Inactivo';
+
+            const registro = {
+                fecha: fechaCobro, cliente: cli.nombre, idVenta: cli.idVenta || '', pago: nuevoPago,
+                saldoAnterior: +base.toFixed(2), saldo: saldoNuevo, saldoManual: cobroSaldoManual,
+                recibo: document.getElementById('cob-recibo').value
+            };
+            // Solo los cobros nuevos (o ya vinculados) se reflejan en Entradas / Salidas
+            if (!viejo) registro.id = createClientKey(); else if (viejo.id) registro.id = viejo.id;
+            if (viejo) appData.cobros[idx] = registro; else appData.cobros.push(registro);
+            if (registro.id) sincronizarMovimiento('cobro', registro.id, { fecha: fechaCobro, tipo: 'entrada', monto: nuevoPago, categoria: 'Comercial Ethan', descripcion: `Cobro a ${cli.nombre}` });
+
+            actualizarUltimoPagoVenta(cliIndex);
+            if (viejoCli !== -1 && viejoCli !== cliIndex) actualizarUltimoPagoVenta(viejoCli);
+
             saveData();
             closeModal('modal-cobro');
+            renderMovimientos();
             renderCobros();
             renderClientes();
             renderClientesActivos();
@@ -2564,9 +2690,9 @@ listaCalendario.sort((a, b) => {
                                 ${(cobrosOrdenRecibo[semanaTitle] ? [...lista].sort((x, y) => String(y.recibo || '').localeCompare(String(x.recibo || ''), undefined, { numeric: true })) : lista).map(c => `
                                     <tr class="hover:bg-green-50/50 transition-colors">
                                         <td class="p-3 text-gray-600">${c.fecha || '-'}</td>
-                                        <td class="p-3 font-bold text-gray-900">${esc(c.cliente) || '-'}</td>
+                                        <td class="p-3 font-bold text-gray-900">${esc(c.cliente) || '-'}${c.idVenta ? `<span class="block text-[10px] font-normal text-gray-400">Venta #${esc(c.idVenta)}</span>` : ''}</td>
                                         <td class="p-3 text-green-600 font-black text-base">$${(c.pago || 0).toFixed(2)}</td>
-                                        <td class="p-3 font-bold text-red-500">$${(c.saldo || 0).toFixed(2)}</td>
+                                        <td class="p-3 font-bold text-red-500">$${(c.saldo || 0).toFixed(2)}${c.saldoManual ? '<span class="block text-[10px] font-normal text-amber-600">ajustado a mano</span>' : ''}</td>
                                         <td class="p-3 font-mono text-gray-500 bg-gray-50 rounded px-2 m-2 inline-block border">${esc(c.recibo) || '-'}</td>
                                         <td class="p-3 text-center space-x-3">
                                             <button onclick="openModalCobro(${c.originalIndex})" class="text-blue-500 hover:text-blue-800" title="Editar"><i class="fa-solid fa-pen"></i></button>
@@ -2590,26 +2716,23 @@ listaCalendario.sort((a, b) => {
         };
 
         function deleteCobro(index) {
-            if (confirm('¿Eliminar este reporte de cobro? El monto se volverá a sumar a la deuda del cliente.')) {
-                const cobro = appData.cobros[index];
-                const cliIndex = appData.clientes.findIndex(c => c.nombre === cobro.cliente);
-                if(cliIndex !== -1) {
-                    appData.clientes[cliIndex].saldo = (appData.clientes[cliIndex].saldo || 0) + parseFloat(cobro.pago || 0);
-                    appData.clientes[cliIndex].estado = 'Activo';
-                }
-                
-                appData.cobros.splice(index, 1);
-                
-                if(cliIndex !== -1) {
-                    actualizarUltimoPagoCliente(cobro.cliente);
-                }
-
-                saveData();
-                renderCobros();
-                renderClientes();
-                renderClientesActivos();
-                renderCalendario();
+            if (!confirm('¿Eliminar este reporte de cobro? El monto se volverá a sumar al saldo de su venta.')) return;
+            const cobro = appData.cobros[index];
+            const cliIndex = cobroClienteIndex(cobro);
+            if (cliIndex !== -1) {
+                const cli = appData.clientes[cliIndex];
+                cli.saldo = +(toNumber(cli.saldo) + reduccionCobro(cobro)).toFixed(2);
+                if (cli.saldo > 0) cli.estado = 'Activo';
             }
+            appData.cobros.splice(index, 1);
+            if (cobro.id) sincronizarMovimiento('cobro', cobro.id, null);
+            actualizarUltimoPagoVenta(cliIndex);
+            saveData();
+            renderMovimientos();
+            renderCobros();
+            renderClientes();
+            renderClientesActivos();
+            renderCalendario();
         }
 
         // ==========================================
@@ -2806,6 +2929,7 @@ listaCalendario.sort((a, b) => {
         window.saveCompra = saveCompra;
         window.onCobroClientChange = onCobroClientChange;
         window.calcNuevoSaldoCobro = calcNuevoSaldoCobro;
+        window.notaSaldoCobro = notaSaldoCobro;
         window.openModalCliente = openModalCliente;
         window.saveCliente = saveCliente;
         window.exportarBaseDeDatos = exportarBaseDeDatos;
